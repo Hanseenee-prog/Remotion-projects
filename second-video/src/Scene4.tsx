@@ -266,7 +266,7 @@ export const Scene4: React.FC = () => {
         flexDirection:   "column",
         gap:             V_GAP,
         zIndex:          5,
-        opacity:         interpolate(frame, [55, 65], [0.35, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }),
+        opacity:         1,
         pointerEvents:   "none",
       }}>
         {Array.from({ length: ROWS }, (_, row) => (
