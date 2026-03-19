@@ -8,6 +8,7 @@ import { Scene5 } from "./Scene5";
 import { Scene6 } from "./Scene6";
 import { Scene6ctd } from "./Scene6ctd";
 import { Scene7IntroPunch } from "./Scene7Intro";
+import { Scene7 } from "./Scene7";
 
 // ─── Timing (frames @ 30fps) ──────────────────────────────────────────────────
 export const SCENE_DURATIONS = {
@@ -19,7 +20,7 @@ export const SCENE_DURATIONS = {
   s06:  1.8 * 30,   // 150f — Event Delegation Intro
   s06ctd: 2 * 30, //  45f — Event Delegation Continued (gears)
   s07intro: 2 * 30, // 15f — Intro to The Bubble (short teaser before main bubble scene)
-  s07:  7 * 30,   // 210f — The Bubble
+  s07:  8 * 30,   // 210f — The Bubble
   s08:  6 * 30,   // 180f — The Solution
   s09:  5 * 30,   // 150f — The Payoff
   s10:  3 * 30,   //  90f — CTA
@@ -131,7 +132,7 @@ export const Reel: React.FC = () => (
       </Series.Sequence>
 
       <Series.Sequence durationInFrames={SCENE_DURATIONS.s07}>
-        <Placeholder label="07 — The Bubble" color="#4D9FFF" />
+        <Scene7 />
       </Series.Sequence>
 
       <Series.Sequence durationInFrames={SCENE_DURATIONS.s08}>
