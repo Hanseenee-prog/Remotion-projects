@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Window Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --header-bg: #161b22;
+            --text-gray: #abb2bf;
+            --method-purple: #c678dd;
+            --string-blue: #a5d6ff; /* Adjusted to match the light blue strings */
+            --variable-orange: #d19a66;
+            --keyword-cyan: #56b6c2;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --js-yellow: #f7df1e;
+        }
+
+        body {
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .window {
+            width: 800px;
+            background-color: var(--bg-color);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.8);
+            border: 1px solid var(--border-color);
+        }
+
+        .header {
+            height: 54px;
+            background-color: var(--header-bg);
+            display: flex;
+            align-items: center;
+            padding: 0 18px;
+            position: relative;
+        }
+
+        .traffic-lights {
+            display: flex;
+            gap: 8px;
+            z-index: 2;
+        }
+
+        .light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .red { background-color: #ff5f56; }
+        .yellow { background-color: #ffbd2e; }
+        .green { background-color: #27c93f; }
+
+        .tab {
+            position: absolute;
+            left: 95px;
+            bottom: 0;
+            height: 44px;
+            background-color: var(--bg-color);
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-radius: 8px 8px 0 0;
+            font-size: 15px;
+            color: #e6edf3;
+        }
+
+        /* Fixed JS Logo */
+        .js-logo {
+            background-color: var(--js-yellow);
+            color: #000;
+            font-weight: 900;
+            font-size: 11px;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            padding: 0 2px 1px 0;
+            border-radius: 2px;
+            box-sizing: border-box;
+            font-family: sans-serif; /* Standard JS logo look */
+        }
+
+        .code-content {
+            padding: 40px;
+            font-size: 20px;
+            line-height: 1.6;
+            color: var(--text-gray);
+        }
+
+        .method { color: var(--method-purple); }
+        .string { color: var(--string-blue); }
+        .variable { color: var(--variable-orange); }
+        .keyword { color: var(--keyword-cyan); }
+        .indent { margin-left: 28px; }
+    </style>
+</head>
+<body>
+
+    <div class="window">
+        <div class="header">
+            <div class="traffic-lights">
+                <div class="light red"></div>
+                <div class="light yellow"></div>
+                <div class="light green"></div>
+            </div>
+            <div class="tab">
+                <div class="js-logo">JS</div>
+                scripts.js
+            </div>
+        </div>
+        <div class="code-content">
+            <div>app.<span class="method">get</span>(<span class="string">"/download"</span>, (req, res) => {</div>
+            <div class="indent">res.<span class="method">setHeader</span>(</div>
+                <div class="indent" style="margin-left: 56px;">
+                    <span class="string">"Content-Disposition"</span>, <br>
+                    <span class="string">"attachment; filename=file.pdf"</span>
+                </div>
+            <div class="indent">);</div>
+            <br>
+            <div class="indent">res.<span class="method">sendFile</span>(__dirname + <span class="string">"/file.pdf"</span>);</div>
+            <div>});</div>
+        </div>
+    </div>
+
+</body>
+</html>
