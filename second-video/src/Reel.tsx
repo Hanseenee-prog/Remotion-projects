@@ -4,6 +4,7 @@ import { Scene01Hook } from "./Scene1";
 import { Scene2 } from "./Scene2";
 import { Scene3 } from "./Scene3";
 import { Scene4 } from "./Scene4";
+import { Scene5 } from "./Scene5";
 
 // ─── Timing (frames @ 30fps) ──────────────────────────────────────────────────
 export const SCENE_DURATIONS = {
@@ -109,7 +110,7 @@ export const Reel: React.FC = () => (
       </Series.Sequence>
 
       <Series.Sequence durationInFrames={SCENE_DURATIONS.s05}>
-        <Placeholder label="05 — The Question" color="#888888" />
+        <Scene5 />
       </Series.Sequence>
 
       <Series.Sequence durationInFrames={SCENE_DURATIONS.s06}>
