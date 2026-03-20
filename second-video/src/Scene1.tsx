@@ -27,7 +27,7 @@ const SYN = {
 // font 56px — big and visible. Each line div has overflow:hidden so
 // the width-reveal typewriter still works even though text is wider than the window.
 const WIN_W      = 1040;
-const FONT_SIZE  = 43;
+const FONT_SIZE  = 40;
 const FONT_W     = 600;   // bold
 const BOTTOM_PAD = 250;
 const VIDEO_H    = 1920;

@@ -33,7 +33,7 @@ const CENTER_IDX = Math.floor(ROWS / 2) * COLS + Math.floor(COLS / 2); // 7
 
 // ─── Code window constants — matching Scene01 exactly ─────────────────────────
 const WIN_W        = 1040;
-const FONT_SIZE    = 42;
+const FONT_SIZE    = 40;
 const FONT_W       = 600;
 const STACK_COUNT  = 4;
 // Final resting scale — 0.82 gives 113px margin each side on 1080px canvas
