@@ -237,7 +237,7 @@ export const Scene7: React.FC = () => {
         height:          PARENT_H,
         borderRadius:    28,
         background:      "transparent",
-        border:          `3px solid ${borderColor}`,
+        border:          `6px solid ${borderColor}`,
         boxShadow:       parentGlow !== "none" ? parentGlow : "none",
         transform:       `scale(${parentScale})`,
         transformOrigin: "center center",
