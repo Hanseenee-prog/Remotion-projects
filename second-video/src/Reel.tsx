@@ -75,25 +75,25 @@ export const ReelBackground: React.FC = () => (
 );
 
 // ─── Placeholder ──────────────────────────────────────────────────────────────
-const Placeholder: React.FC<{ label: string; color: string }> = ({ label, color }) => (
-  <AbsoluteFill
-    style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-  >
-    <div
-      style={{
-        fontFamily: FONTS.mono,
-        fontSize: 36,
-        color,
-        border: `2px solid ${color}`,
-        padding: "24px 40px",
-        borderRadius: 8,
-        opacity: 0.5,
-      }}
-    >
-      {label}
-    </div>
-  </AbsoluteFill>
-);
+// const Placeholder: React.FC<{ label: string; color: string }> = ({ label, color }) => (
+//   <AbsoluteFill
+//     style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+//   >
+//     <div
+//       style={{
+//         fontFamily: FONTS.mono,
+//         fontSize: 36,
+//         color,
+//         border: `2px solid ${color}`,
+//         padding: "24px 40px",
+//         borderRadius: 8,
+//         opacity: 0.5,
+//       }}
+//     >
+//       {label}
+//     </div>
+//   </AbsoluteFill>
+// );
 
 // ─── Main Reel ────────────────────────────────────────────────────────────────
 export const Reel: React.FC = () => (

@@ -15,22 +15,22 @@ const SYN = {
   plain:   "#ABB2BF",
   method:  "#C678DD",
   string:  "#A5D6FF",
-  ident:   "#D19A66",  // orange — button param in forEach
-  arrow:   "#E06C75",  // coral — => and =
+  ident:   "#D19A66",
+  arrow:   "#E06C75",
   punct:   "#ABB2BF",
 };
 
-// ─── Grid constants — matching Scene3 exactly ────────────────────────────────
+// ─── Grid constants ───────────────────────────────────────────────────────────
 const BTN_W   = 420;
 const BTN_H   = 130;
 const H_GAP   = 24;
 const V_GAP   = 120;
 const COLS    = 3;
 const ROWS    = 5;
-const GRID_W  = COLS * BTN_W + (COLS - 1) * H_GAP; // 1308
-const FIT_SCALE = 960 / GRID_W;                      // 0.734
+const GRID_W  = COLS * BTN_W + (COLS - 1) * H_GAP;
+const FIT_SCALE = 960 / GRID_W;
 
-// ─── Card/window constants — matching Scene3 exactly ─────────────────────────
+// ─── Card/window constants ────────────────────────────────────────────────────
 const WIN_W          = 1040;
 const WIN_REST_SCALE = 0.86;
 const VIDEO_H        = 1920;
@@ -44,28 +44,20 @@ const CARD_OFFSETS: { y: number; rotate: number }[] = [
   { y:  66, rotate:  3.8 },
 ];
 
-// Success border timing: 15 buttons, frames 65-120, ~3.93f apart
 const SUCCESS_FRAMES = [65, 69, 73, 77, 81, 85, 89, 93, 96, 100, 104, 108, 112, 116, 120];
 
-// Font sizes
 const FS_DEFAULT  = 42;
 const FS_SHRUNK   = 39;
 const FONT_W      = 600;
 const WIN_H_DEFAULT = 426;
 const WIN_H_FULL    = 507;
 
-// ─── Timeline — everything done by frame 75 ───────────────────────────────────
-// 0  – 22   Cards exit (original speed restored), overlay slides down
-// 0  – 35   Grid shifts up 220px
-// 35 – 50   Code window slides in from bottom
-// 50 – 62   Indent + font shrink
-// 62 – 67   forEach types (fast, one cursor)
-// 67 – 75   }); types below (fast, one cursor)
+// ─── Timeline ─────────────────────────────────────────────────────────────────
 const T = {
   cardsExit:     0,
-  cardsExitEnd:  22,   // original speed
+  cardsExitEnd:  22,
   overlayOut:    0,
-  overlayOutEnd: 18,   // original speed
+  overlayOutEnd: 18,
 
   gridShiftStart: 0,
   gridShiftEnd:   30,
@@ -79,10 +71,10 @@ const T = {
   shrinkEnd:     48,
 
   forEachStart:  48,
-  forEachEnd:    62,   // 5 frames — very fast
+  forEachEnd:    62,
 
   closingStart:  62,
-  closingEnd:    75,   // 8 frames — done exactly at 75
+  closingEnd:    75,
 } as const;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -102,7 +94,6 @@ const ExitCard: React.FC<{
   const offset = CARD_OFFSETS[stackIdx];
   const goLeft = stackIdx < 2;
 
-  // Original speed restored: stiffness 160, durationInFrames 22
   const exitSpring = spring({
     fps,
     frame: frame - T.cardsExit,
@@ -143,7 +134,6 @@ const ExitCard: React.FC<{
         fontFamily:      "'JetBrains Mono', monospace",
       }}
     >
-      {/* Title bar */}
       <div style={{ height: 96, background: "#161B22", display: "flex", alignItems: "center", padding: "0 32px", position: "relative", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
         <div style={{ display: "flex", gap: 12 }}>
           {["#FF5F56", "#FFBD2E", "#27C93F"].map((c) => (
@@ -155,7 +145,6 @@ const ExitCard: React.FC<{
           scripts.js
         </div>
       </div>
-      {/* Code body */}
       <div style={{ padding: "44px 48px 52px", fontSize: FS_DEFAULT, fontWeight: FONT_W, lineHeight: 1.85, color: SYN.plain, display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" }}>
         <div style={{ whiteSpace: "nowrap" }}>
           <Tok color={SYN.plain}>{varName}.</Tok>
@@ -232,17 +221,16 @@ export const Scene4: React.FC = () => {
   const indentPx  = Math.round(indentP * 82);
   const indent2Px = indentPx + Math.round(FS_SHRUNK * 0.6 * 2);
 
-  // ── Typing: forEach then }); — sequential, one cursor at a time ──────────
-  const forEachW    = typeW(frame, T.forEachStart, T.forEachEnd);
-  const closingW    = typeW(frame, T.closingStart, T.closingEnd);
+  // ── Typing widths ─────────────────────────────────────────────────────────
+  const forEachW = typeW(frame, T.forEachStart, T.forEachEnd);
+  const closingW = typeW(frame, T.closingStart, T.closingEnd);
+
   const showForEach = frame >= T.forEachStart;
   const showClosing = frame >= T.closingStart;
 
-  // Only ONE cursor active at a time — forEach cursor disappears when it finishes
-  const cursorOn      = Math.floor(frame / 5) % 2 === 0; // faster blink for fast typing
-  const cursorChar    = cursorOn ? "▌" : " ";
-  const typingForEach = frame >= T.forEachStart && frame < T.forEachEnd;
-  const typingClosing = frame >= T.closingStart && frame < T.closingEnd;
+  // Single cursor — blinks fast to feel like active typing
+  const cursorOn   = Math.floor(frame / 5) % 2 === 0;
+  const cursorChar = cursorOn ? "▌" : " ";
 
   // ── Window shifts up as forEach line adds height ──────────────────────────
   const winShiftUp = interpolate(
@@ -257,8 +245,7 @@ export const Scene4: React.FC = () => {
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
 
-      {/* ── Button grid — white, unclicked, shifted up, no blur ────────────── */}
-      {/* Fades from 0.35 (bg context) to 1.0 as success borders arrive at frame 65 */}
+      {/* ── Button grid ──────────────────────────────────────────────────── */}
       <div style={{
         transform:       `scale(${FIT_SCALE}) translateY(${gridShiftY / FIT_SCALE}px)`,
         transformOrigin: "center center",
@@ -272,9 +259,8 @@ export const Scene4: React.FC = () => {
         {Array.from({ length: ROWS }, (_, row) => (
           <div key={row} style={{ display: "flex", flexDirection: "row", gap: H_GAP }}>
             {Array.from({ length: COLS }, (_, col) => {
-              const idx         = row * COLS + col;
+              const idx          = row * COLS + col;
               const successFrame = SUCCESS_FRAMES[idx];
-              // Spring fires at successFrame — border pops in with a quick scale bounce
               const successSpring = spring({
                 fps,
                 frame: frame - successFrame,
@@ -283,40 +269,28 @@ export const Scene4: React.FC = () => {
               });
               const isSuccess   = frame >= successFrame;
               const borderP     = isSuccess ? Math.min(1, Math.max(0, successSpring)) : 0;
-              // Border scale pops in: 0 → 1.06 → 1.0
               const borderScale = isSuccess
                 ? interpolate(successSpring, [0, 0.3, 1], [0.6, 1.06, 1.0])
                 : 0;
-              // Checkmark pops in slightly after border
               const checkSpring = spring({
                 fps,
                 frame: frame - (successFrame + 4),
                 config: { damping: 10, stiffness: 400, mass: 0.4 },
                 durationInFrames: 10,
               });
-              const checkScale  = isSuccess && frame >= successFrame + 4
+              const checkScale = isSuccess && frame >= successFrame + 4
                 ? Math.min(1.2, Math.max(0, checkSpring))
                 : 0;
 
               return (
-                <div
-                  key={col}
-                  style={{
-                    position:  "relative",
-                    width:     BTN_W,
-                    height:    BTN_H,
-                    flexShrink: 0,
-                  }}
-                >
-                  {/* Button body */}
+                <div key={col} style={{ position: "relative", width: BTN_W, height: BTN_H, flexShrink: 0 }}>
                   <div style={{
                     width: BTN_W, height: BTN_H, borderRadius: 24,
                     backgroundColor: "#FFFFFF",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: 46, fontWeight: 700,
                     fontFamily: "'JetBrains Mono', monospace",
-                    color: "#111111",
-                    gap: 16,
+                    color: "#111111", gap: 16,
                     boxShadow: isSuccess
                       ? `0 12px 40px rgba(0,0,0,0.45), 0 0 ${borderP * 20}px rgba(39,201,63,${borderP * 0.35})`
                       : "0 12px 40px rgba(0,0,0,0.45)",
@@ -324,49 +298,29 @@ export const Scene4: React.FC = () => {
                     Click Me
                     <span style={{ fontSize: 48, lineHeight: 1 }}>😐</span>
                   </div>
-
-                  {/* Green success border — pops in over the button */}
                   {isSuccess && (
                     <div style={{
-                      position:        "absolute",
-                      inset:           -3,
-                      borderRadius:    27,
-                      border:          `3px solid #27C93F`,
-                      transform:       `scale(${borderScale})`,
+                      position: "absolute", inset: -3, borderRadius: 27,
+                      border: "3px solid #27C93F",
+                      transform: `scale(${borderScale})`,
                       transformOrigin: "center center",
-                      pointerEvents:   "none",
-                      boxShadow:       `0 0 ${borderP * 16}px rgba(39,201,63,0.5)`,
+                      pointerEvents: "none",
+                      boxShadow: `0 0 ${borderP * 16}px rgba(39,201,63,0.5)`,
                     }} />
                   )}
-
-                  {/* Checkmark badge — top-right corner */}
                   {isSuccess && (
                     <div style={{
-                      position:        "absolute",
-                      top:             -14,
-                      right:           -14,
-                      width:           44,
-                      height:          44,
-                      borderRadius:    "50%",
+                      position: "absolute", top: -14, right: -14,
+                      width: 44, height: 44, borderRadius: "50%",
                       backgroundColor: "#27C93F",
-                      display:         "flex",
-                      alignItems:      "center",
-                      justifyContent:  "center",
-                      transform:       `scale(${checkScale})`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      transform: `scale(${checkScale})`,
                       transformOrigin: "center center",
-                      boxShadow:       "0 4px 12px rgba(39,201,63,0.5)",
-                      zIndex:          2,
-                      pointerEvents:   "none",
+                      boxShadow: "0 4px 12px rgba(39,201,63,0.5)",
+                      zIndex: 2, pointerEvents: "none",
                     }}>
-                      {/* SVG checkmark */}
                       <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                        <polyline
-                          points="4,11 9,16 18,6"
-                          stroke="white"
-                          strokeWidth="2.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
+                        <polyline points="4,11 9,16 18,6" stroke="white" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
                   )}
@@ -379,13 +333,10 @@ export const Scene4: React.FC = () => {
 
       {/* ── Overlay sliding down ─────────────────────────────────────────── */}
       <div style={{
-        position: "absolute",
-        left: 0, right: 0,
-        top: overlayY,
-        height: VIDEO_H,
+        position: "absolute", left: 0, right: 0,
+        top: overlayY, height: VIDEO_H,
         background: "rgba(8,8,8,0.6)",
-        zIndex: 6,
-        pointerEvents: "none",
+        zIndex: 6, pointerEvents: "none",
       }} />
 
       {/* ── 4 stacked cards exiting ───────────────────────────────────────── */}
@@ -434,25 +385,23 @@ export const Scene4: React.FC = () => {
           overflow:      "hidden",
         }}>
 
-          {/* Line A: buttons.forEach((button) => { — types in first */}
+          {/* Line A: buttons.forEach((button) => { — cursor INSIDE clipped div */}
           {showForEach && (
-            <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
-              <div style={{ overflow: "hidden", whiteSpace: "nowrap", width: `${forEachW}%` }}>
-                <Tok color={SYN.plain}>buttons.</Tok>
-                <Tok color={SYN.method}>forEach</Tok>
-                <Tok color={SYN.punct}>((</Tok>
-                <Tok color={SYN.ident}>button</Tok>
-                <Tok color={SYN.punct}>) </Tok>
-                <Tok color={SYN.arrow}>={">"}</Tok>
-                <Tok color={SYN.punct}> {"{"}</Tok>
-              </div>
-              {typingForEach && (
+            <div style={{ overflow: "hidden", whiteSpace: "nowrap", width: `${forEachW}%` }}>
+              <Tok color={SYN.plain}>buttons.</Tok>
+              <Tok color={SYN.method}>forEach</Tok>
+              <Tok color={SYN.punct}>((</Tok>
+              <Tok color={SYN.ident}>button</Tok>
+              <Tok color={SYN.punct}>) </Tok>
+              <Tok color={SYN.arrow}>={">"}</Tok>
+              <Tok color={SYN.punct}> {"{"}</Tok>
+              {forEachW < 100 && (
                 <span style={{ color: "#FFFFFF", marginLeft: 2 }}>{cursorChar}</span>
               )}
             </div>
           )}
 
-          {/* Line B: button.addEventListener('click', () => { — pre-written */}
+          {/* Line B: button.addEventListener('click', () => { */}
           <div style={{ whiteSpace: "nowrap", paddingLeft: indentPx }}>
             <Tok color={SYN.plain}>button.</Tok>
             <Tok color={SYN.method}>addEventListener</Tok>
@@ -463,7 +412,7 @@ export const Scene4: React.FC = () => {
             <Tok color={SYN.punct}> {"{"}</Tok>
           </div>
 
-          {/* Line C: button.style.backgroundColor = 'red'; — pre-written */}
+          {/* Line C: button.style.backgroundColor = 'red'; */}
           <div style={{ whiteSpace: "nowrap", paddingLeft: indent2Px }}>
             <Tok color={SYN.plain}>button.style.</Tok>
             <Tok color={SYN.method}>backgroundColor</Tok>
@@ -474,18 +423,16 @@ export const Scene4: React.FC = () => {
             <Tok color={SYN.punct}>;</Tok>
           </div>
 
-          {/* Line D: }); — pre-written, indented */}
+          {/* Line D: }); indented */}
           <div style={{ whiteSpace: "nowrap", paddingLeft: indentPx }}>
             <Tok color={SYN.punct}>{"});"}</Tok>
           </div>
 
-          {/* Line E: }); — forEach closing, types in second */}
+          {/* Line E: }); forEach closing — cursor INSIDE clipped div */}
           {showClosing && (
-            <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
-              <div style={{ overflow: "hidden", whiteSpace: "nowrap", width: `${closingW}%` }}>
-                <Tok color={SYN.punct}>{"});"}</Tok>
-              </div>
-              {typingClosing && (
+            <div style={{ overflow: "hidden", whiteSpace: "nowrap", width: `${closingW}%` }}>
+              <Tok color={SYN.punct}>{"});"}</Tok>
+              {closingW < 100 && (
                 <span style={{ color: "#FFFFFF", marginLeft: 2 }}>{cursorChar}</span>
               )}
             </div>

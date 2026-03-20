@@ -1,6 +1,8 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Img,
+  Img,
   interpolate,
   interpolateColors,
   spring,
@@ -288,7 +290,7 @@ const ProfileCard: React.FC<{
                 background:   "#333",
                 position:     "relative",
               }}>
-                <img
+                <Img
                   src={staticFile("profile-img.jpg")}
                   style={{
                     width:      "100%",
