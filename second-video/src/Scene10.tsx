@@ -9,229 +9,200 @@ import {
 
 const VIDEO_W = 1080;
 const VIDEO_H = 1920;
-
 const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
 
 // ─── Timeline ─────────────────────────────────────────────────────────────────
 const T = {
-  pushEnd:      20,  // cart+person arrive at center
-  leaveStart:   22,  // person steps away from cart
-  leaveEnd:     34,  // person fully facing viewer
-  waveStart:    36,  // continuous wave begins
-  fadeStart:    70,
-  fadeEnd:      75,
+  pushEnd:   20,  // cart+person reach center
+  stepStart: 22,  // person steps out
+  stepEnd:   35,  // fully turned, facing viewer
+  waveStart: 37,  // wave begins
+  fadeStart: 70,
+  fadeEnd:   75,
 } as const;
 
-// ─── Character dimensions ─────────────────────────────────────────────────────
-const HEAD_R     = 36;
-const BODY_W     = 52;
-const BODY_H     = 72;
-const LIMB_W     = 18;   // thickness of arms / legs
-const LEG_H      = 64;
-const ARM_L      = 56;
-const NECK_H     = 8;
+// ─── Sizes ────────────────────────────────────────────────────────────────────
+const HEAD_R   = 66;
+const BODY_W   = 96;
+const BODY_H   = 132;
+const LIMB_W   = 32;
+const LEG_H    = 118;
+const ARM_L    = 100;
+const NECK_H   = 12;
 
-// Cart dimensions
-const CART_W     = 160;
-const CART_H     = 90;
-const WHEEL_R    = 22;
-const HANDLE_H   = 80;
+const CART_W   = 290;
+const CART_H   = 158;
+const WHEEL_R  = 40;
+const HANDLE_H = 134;
 
-// Final resting center X of the cart
-const CART_REST_X = VIDEO_W / 2;
-const CART_REST_Y = VIDEO_H / 2 + 80;
+const CART_REST_X  = VIDEO_W / 2;
+const GROUND_Y     = VIDEO_H / 2 + 260;
+const HANDLE_X_REL = -CART_W / 2 - 16;
+const PERSON_STEP_X = CART_REST_X + CART_W / 2 + 90;
 
-// Person stands to the left of cart handle while pushing
-const PERSON_PUSH_X = CART_REST_X - CART_W / 2 - 60;
-// After leaving cart, person steps to center
-const PERSON_FACE_X = VIDEO_W / 2;
-const PERSON_Y      = CART_REST_Y - CART_H - LEG_H - BODY_H - NECK_H - HEAD_R + 10;
-
-// ─── SVG character ────────────────────────────────────────────────────────────
-const Character: React.FC<{
-  x: number;
-  y: number; // baseline (feet level)
-  waveAngle: number;   // right arm angle in degrees (0 = down)
-  pushAngle: number;   // lean angle while pushing (degrees)
-  flip: boolean;       // mirror horizontally
+// ─── Cart (with </> icon + subtle contents) ───────────────────────────────────
+const Cart: React.FC<{
+  cx: number;
+  groundY: number;
   opacity: number;
-}> = ({ x, y, waveAngle, pushAngle, flip, opacity }) => {
-  const scaleX = flip ? -1 : 1;
-  const totalH = HEAD_R * 2 + NECK_H + BODY_H + LEG_H;
-
-  // Colors
-  const SKIN   = "#FBBF7A";
-  const SHIRT  = "#5B4DB5";
-  const PANTS  = "#2D3A6B";
-  const SHOE   = "#1a1a2e";
-
-  // Foot Y
-  const footY  = 0;
-  // Leg top Y
-  const legTopY = footY - LEG_H;
-  // Body bottom
-  const bodyBotY = legTopY;
-  // Body top
-  const bodyTopY = bodyBotY - BODY_H;
-  // Neck top
-  const neckTopY = bodyTopY - NECK_H;
-  // Head center
-  const headCY   = neckTopY - HEAD_R;
-
-  // Shoulder pivot points
-  const shoulderLX = -BODY_W / 2;
-  const shoulderRX =  BODY_W / 2;
-  const shoulderY  = bodyTopY + 14;
-
-  // Left arm — hangs down, slightly forward (push pose)
-  const leftArmAngle = pushAngle !== 0 ? -35 : -10;
+  wheelRot: number;
+}> = ({ cx, groundY, opacity, wheelRot }) => {
+  const bodyTop = -CART_H - WHEEL_R + 8;
+  const bodyCY  = bodyTop + CART_H / 2;
 
   return (
-    <g transform={`translate(${x}, ${y})`} opacity={opacity}>
-      <g transform={`rotate(${pushAngle}, 0, ${bodyBotY - BODY_H / 2})`}>
-        <g transform={`scale(${scaleX}, 1)`}>
+    <g transform={`translate(${cx}, ${groundY})`} opacity={opacity}>
 
-          {/* ── Left leg */}
-          <rect
-            x={-BODY_W / 2 + 4} y={legTopY}
-            width={LIMB_W} height={LEG_H}
-            rx={LIMB_W / 2} fill={PANTS}
-          />
-          {/* Left shoe */}
-          <ellipse cx={-BODY_W / 2 + 4 + LIMB_W / 2} cy={footY} rx={14} ry={7} fill={SHOE} />
-
-          {/* ── Right leg */}
-          <rect
-            x={BODY_W / 2 - 4 - LIMB_W} y={legTopY}
-            width={LIMB_W} height={LEG_H}
-            rx={LIMB_W / 2} fill={PANTS}
-          />
-          {/* Right shoe */}
-          <ellipse cx={BODY_W / 2 - 4 - LIMB_W / 2} cy={footY} rx={14} ry={7} fill={SHOE} />
-
-          {/* ── Body */}
-          <rect
-            x={-BODY_W / 2} y={bodyTopY}
-            width={BODY_W} height={BODY_H}
-            rx={12} fill={SHIRT}
-          />
-
-          {/* ── Left arm — push arm */}
-          <g transform={`rotate(${leftArmAngle}, ${shoulderLX}, ${shoulderY})`}>
-            <rect
-              x={shoulderLX - LIMB_W / 2} y={shoulderY}
-              width={LIMB_W} height={ARM_L}
-              rx={LIMB_W / 2} fill={SKIN}
-            />
+      {/* Wheels — rotate as cart moves */}
+      {[-1, 1].map((side) => {
+        const wx = side * (CART_W / 2 - WHEEL_R - 10);
+        return (
+          <g key={side} transform={`rotate(${wheelRot}, ${wx}, 0)`}>
+            <circle cx={wx} cy={0} r={WHEEL_R}      fill="#1E293B" />
+            <circle cx={wx} cy={0} r={WHEEL_R - 10} fill="#334155" />
+            {/* Spoke cross */}
+            <line x1={wx - WHEEL_R + 8} y1={0} x2={wx + WHEEL_R - 8} y2={0} stroke="#64748B" strokeWidth="3" />
+            <line x1={wx} y1={-(WHEEL_R - 8)} x2={wx} y2={WHEEL_R - 8} stroke="#64748B" strokeWidth="3" />
+            <circle cx={wx} cy={0} r={5} fill="#94A3B8" />
           </g>
+        );
+      })}
 
-          {/* ── Right arm — waving arm */}
-          <g transform={`rotate(${waveAngle}, ${shoulderRX}, ${shoulderY})`}>
-            <rect
-              x={shoulderRX - LIMB_W / 2} y={shoulderY}
-              width={LIMB_W} height={ARM_L}
-              rx={LIMB_W / 2} fill={SKIN}
-            />
-            {/* Hand circle at end of arm */}
-            <circle
-              cx={shoulderRX} cy={shoulderY + ARM_L}
-              r={LIMB_W / 2 + 1} fill={SKIN}
-            />
-          </g>
+      {/* Cart body */}
+      <rect x={-CART_W / 2} y={bodyTop}
+        width={CART_W} height={CART_H} rx={14} fill="#1E293B" />
 
-          {/* Left hand */}
-          <g transform={`rotate(${leftArmAngle}, ${shoulderLX}, ${shoulderY})`}>
-            <circle
-              cx={shoulderLX} cy={shoulderY + ARM_L}
-              r={LIMB_W / 2 + 1} fill={SKIN}
-            />
-          </g>
+      {/* Inner fill — slightly lighter, gives a 3-d inset feel */}
+      <rect x={-CART_W / 2 + 8} y={bodyTop + 8}
+        width={CART_W - 16} height={CART_H - 16} rx={9}
+        fill="#0F172A" opacity="0.7" />
 
-          {/* ── Neck */}
-          <rect
-            x={-8} y={neckTopY}
-            width={16} height={NECK_H + HEAD_R}
-            rx={8} fill={SKIN}
-          />
+      {/* Subtle "contents" — a few stacked rounded rectangles peeking above the cart top */}
+      {/* These sit inside the cart body, slightly raised */}
+      <rect x={-50} y={bodyTop + 14} width={36} height={22} rx={6}
+        fill="#5B4DB5" opacity="0.55" />
+      <rect x={-8}  y={bodyTop + 10} width={28} height={28} rx={6}
+        fill="#7060CC" opacity="0.45" />
+      <rect x={22}  y={bodyTop + 16} width={22} height={18} rx={5}
+        fill="#4338CA" opacity="0.5" />
 
-          {/* ── Head */}
-          <circle cx={0} cy={headCY} r={HEAD_R} fill={SKIN} />
+      {/* </> icon centered on cart body */}
+      {/* < */}
+      <polyline
+        points={`${-44},${bodyCY - 22} ${-68},${bodyCY} ${-44},${bodyCY + 22}`}
+        stroke="#7C3AED" strokeWidth="8"
+        strokeLinecap="round" strokeLinejoin="round"
+        fill="none"
+      />
+      {/* / */}
+      <line
+        x1={-16} y1={bodyCY - 26}
+        x2={16}  y2={bodyCY + 26}
+        stroke="#818CF8" strokeWidth="8"
+        strokeLinecap="round"
+      />
+      {/* > */}
+      <polyline
+        points={`${44},${bodyCY - 22} ${68},${bodyCY} ${44},${bodyCY + 22}`}
+        stroke="#7C3AED" strokeWidth="8"
+        strokeLinecap="round" strokeLinejoin="round"
+        fill="none"
+      />
 
-          {/* Eyes */}
-          <circle cx={-11} cy={headCY - 4} r={5} fill="#1a1a2e" />
-          <circle cx={11}  cy={headCY - 4} r={5} fill="#1a1a2e" />
-          {/* Eye shine */}
-          <circle cx={-9}  cy={headCY - 6} r={2} fill="#FFFFFF" />
-          <circle cx={13}  cy={headCY - 6} r={2} fill="#FFFFFF" />
+      {/* Cart rim / top edge highlight */}
+      <rect x={-CART_W / 2} y={bodyTop}
+        width={CART_W} height={10} rx={10}
+        fill="#334155" opacity="0.8" />
 
-          {/* Smile */}
-          <path
-            d={`M -12 ${headCY + 10} Q 0 ${headCY + 22} 12 ${headCY + 10}`}
-            stroke="#1a1a2e" strokeWidth="3" fill="none"
-            strokeLinecap="round"
-          />
-
-          {/* Hair */}
-          <ellipse cx={0} cy={headCY - HEAD_R + 6} rx={HEAD_R - 2} ry={12} fill="#2D1B00" />
-
-        </g>
-      </g>
+      {/* Handle — vertical post on LEFT */}
+      <rect x={-CART_W / 2 - 16} y={bodyTop - HANDLE_H}
+        width={18} height={HANDLE_H} rx={9} fill="#475569" />
+      {/* Grip bar */}
+      <rect x={-CART_W / 2 - 30} y={bodyTop - HANDLE_H}
+        width={36} height={20} rx={10} fill="#64748B" />
     </g>
   );
 };
 
-// ─── Cart SVG ─────────────────────────────────────────────────────────────────
-const Cart: React.FC<{ x: number; y: number; opacity: number }> = ({ x, y, opacity }) => {
-  const BODY_COLOR  = "#334155";
-  const WHEEL_COLOR = "#1E293B";
-  const HANDLE_COLOR = "#94A3B8";
-  const BASKET_COLOR = "#475569";
+// ─── Character ────────────────────────────────────────────────────────────────
+const Character: React.FC<{
+  cx: number;
+  groundY: number;
+  lean: number;
+  leftArmAngle: number;
+  rightArmAngle: number;
+  facingRight: boolean;
+  opacity: number;
+}> = ({ cx, groundY, lean, leftArmAngle, rightArmAngle, facingRight, opacity }) => {
+
+  const SKIN  = "#FBBF7A";
+  const SHIRT = "#5B4DB5";
+  const PANTS = "#2D3A6B";
+  const SHOE  = "#111827";
+
+  const hipY     = 0;
+  const bodyBotY = hipY;
+  const bodyTopY = bodyBotY - BODY_H;
+  const neckTopY = bodyTopY - NECK_H;
+  const headCY   = neckTopY - HEAD_R;
+
+  const sLX = -BODY_W / 2;
+  const sRX =  BODY_W / 2;
+  const sY  = bodyTopY + 18;
+
+  const sx = facingRight ? 1 : -1;
 
   return (
-    <g transform={`translate(${x}, ${y})`} opacity={opacity}>
-      {/* Wheels */}
-      <circle cx={-CART_W / 2 + WHEEL_R + 8} cy={0} r={WHEEL_R} fill={WHEEL_COLOR} />
-      <circle cx={-CART_W / 2 + WHEEL_R + 8} cy={0} r={WHEEL_R - 8} fill="#64748B" />
-      <circle cx={CART_W / 2 - WHEEL_R - 8}  cy={0} r={WHEEL_R} fill={WHEEL_COLOR} />
-      <circle cx={CART_W / 2 - WHEEL_R - 8}  cy={0} r={WHEEL_R - 8} fill="#64748B" />
+    <g transform={`translate(${cx}, ${groundY})`} opacity={opacity}>
+      <g transform={`rotate(${lean * sx}, 0, ${bodyBotY - BODY_H / 2})`}>
+        <g transform={`scale(${sx}, 1)`}>
 
-      {/* Cart body */}
-      <rect
-        x={-CART_W / 2} y={-CART_H - WHEEL_R + 6}
-        width={CART_W} height={CART_H}
-        rx={10} fill={BODY_COLOR}
-      />
+          {/* ── Left leg — straight */}
+          <rect x={-BODY_W / 2 + 6} y={hipY}
+            width={LIMB_W} height={LEG_H} rx={LIMB_W / 2} fill={PANTS} />
+          <ellipse cx={-BODY_W / 2 + 6 + LIMB_W / 2} cy={hipY + LEG_H} rx={20} ry={9} fill={SHOE} />
 
-      {/* Basket grid lines */}
-      {[-30, 0, 30].map((ox) => (
-        <line key={ox}
-          x1={ox} y1={-CART_H - WHEEL_R + 10}
-          x2={ox} y2={-WHEEL_R + 2}
-          stroke={BASKET_COLOR} strokeWidth="2" opacity="0.6"
-        />
-      ))}
+          {/* ── Right leg — straight */}
+          <rect x={BODY_W / 2 - 6 - LIMB_W} y={hipY}
+            width={LIMB_W} height={LEG_H} rx={LIMB_W / 2} fill={PANTS} />
+          <ellipse cx={BODY_W / 2 - 6 - LIMB_W / 2} cy={hipY + LEG_H} rx={20} ry={9} fill={SHOE} />
 
-      {/* Handle — extends to the left */}
-      <rect
-        x={-CART_W / 2 - 12} y={-CART_H - WHEEL_R + 6 - HANDLE_H}
-        width={14} height={HANDLE_H}
-        rx={7} fill={HANDLE_COLOR}
-      />
-      {/* Handle grip */}
-      <rect
-        x={-CART_W / 2 - 24} y={-CART_H - WHEEL_R + 6 - HANDLE_H}
-        width={26} height={14}
-        rx={7} fill={HANDLE_COLOR}
-      />
+          {/* ── Body */}
+          <rect x={-BODY_W / 2} y={bodyTopY} width={BODY_W} height={BODY_H} rx={16} fill={SHIRT} />
 
-      {/* Label on cart */}
-      <text
-        x={0} y={-CART_H / 2 - WHEEL_R + 6 + 6}
-        textAnchor="middle" dominantBaseline="middle"
-        fontFamily="'JetBrains Mono', monospace"
-        fontSize="18" fontWeight="700"
-        fill="#94A3B8"
-      >cart</text>
+          {/* ── Left arm */}
+          <g transform={`rotate(${leftArmAngle}, ${sLX}, ${sY})`}>
+            <rect x={sLX - LIMB_W / 2} y={sY} width={LIMB_W} height={ARM_L} rx={LIMB_W / 2} fill={SKIN} />
+            <circle cx={sLX} cy={sY + ARM_L} r={LIMB_W / 2 + 2} fill={SKIN} />
+          </g>
+
+          {/* ── Right arm */}
+          <g transform={`rotate(${rightArmAngle}, ${sRX}, ${sY})`}>
+            <rect x={sRX - LIMB_W / 2} y={sY} width={LIMB_W} height={ARM_L} rx={LIMB_W / 2} fill={SKIN} />
+            <circle cx={sRX} cy={sY + ARM_L} r={LIMB_W / 2 + 2} fill={SKIN} />
+          </g>
+
+          {/* ── Neck */}
+          <rect x={-10} y={neckTopY} width={20} height={NECK_H + HEAD_R * 0.6} rx={10} fill={SKIN} />
+
+          {/* ── Head */}
+          <circle cx={0} cy={headCY} r={HEAD_R} fill={SKIN} />
+
+          {/* Hair */}
+          <ellipse cx={0} cy={headCY - HEAD_R + 8} rx={HEAD_R - 2} ry={16} fill="#2D1B00" />
+
+          {/* Eyes */}
+          <circle cx={-15} cy={headCY - 6} r={7} fill="#1a1a2e" />
+          <circle cx={ 15} cy={headCY - 6} r={7} fill="#1a1a2e" />
+          <circle cx={-13} cy={headCY - 9} r={3} fill="#FFF" />
+          <circle cx={ 17} cy={headCY - 9} r={3} fill="#FFF" />
+
+          {/* Smile */}
+          <path d={`M -16 ${headCY + 14} Q 0 ${headCY + 30} 16 ${headCY + 14}`}
+            stroke="#1a1a2e" strokeWidth="4" fill="none" strokeLinecap="round" />
+
+        </g>
+      </g>
     </g>
   );
 };
@@ -241,118 +212,87 @@ export const Scene10: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // ── 1. Push: cart + person slide in from left (0 → 20) ────────────────────
-  const pushSpring = spring({
-    fps, frame,
-    config: { damping: 18, stiffness: 120, mass: 1.1 },
-    durationInFrames: T.pushEnd,
+  // ── Phase 1: Push (0 → 20) — steady walk into screen ─────────────────────
+  const pushP    = clamp(frame / T.pushEnd);
+  const pushEased = 1 - Math.pow(1 - pushP, 2.2);
+
+  const offscreenX = -(CART_W + HEAD_R * 2 + 240);
+  const cartX     = interpolate(pushEased, [0, 1], [offscreenX, CART_REST_X]);
+  const personPushX = cartX + HANDLE_X_REL - BODY_W / 2 - 8;
+
+  // Wheel rotation: proportional to distance traveled
+  const cartDist = cartX - offscreenX;
+  const wheelRot = (cartDist / (WHEEL_R * 2 * Math.PI)) * 360;
+
+  // ── Phase 2: Step away (22 → 35) ─────────────────────────────────────────
+  const stepSpring = spring({
+    fps, frame: frame - T.stepStart,
+    config: { damping: 14, stiffness: 200, mass: 0.75 },
+    durationInFrames: T.stepEnd - T.stepStart,
   });
-  const pushP = clamp(pushSpring);
-
-  // Cart slides from off-screen left to center
-  const cartX = interpolate(pushP, [0, 1], [-(CART_W / 2 + 100), CART_REST_X]);
-  const cartY = CART_REST_Y;
-
-  // Person travels with cart while pushing
-  const personPushX = interpolate(pushP, [0, 1], [-(CART_W / 2 + 100) - 60, PERSON_PUSH_X]);
-
-  // ── 2. Person leaves cart → moves to center + faces viewer (22 → 34) ──────
-  const leaveSpring = spring({
-    fps, frame: frame - T.leaveStart,
-    config: { damping: 14, stiffness: 180, mass: 0.8 },
-    durationInFrames: T.leaveEnd - T.leaveStart,
-  });
-  const leaveP = frame >= T.leaveStart ? clamp(leaveSpring) : 0;
-
-  // Person X: from push position → face center
-  const personX = frame < T.leaveStart
+  const stepP   = frame >= T.stepStart ? clamp(stepSpring) : 0;
+  const personX = frame < T.stepStart
     ? personPushX
-    : interpolate(leaveP, [0, 1], [PERSON_PUSH_X, PERSON_FACE_X]);
+    : interpolate(stepP, [0, 1], [personPushX, PERSON_STEP_X]);
 
-  // Lean: person leans forward while pushing, straightens up
-  const pushLean = frame < T.leaveStart
-    ? interpolate(pushP, [0, 0.3, 1], [0, -12, -8])
-    : interpolate(leaveP, [0, 1], [-8, 0]);
+  // ── Lean ──────────────────────────────────────────────────────────────────
+  const lean = frame < T.stepStart
+    ? -14
+    : interpolate(stepP, [0, 1], [-14, 0]);
 
-  // Flip: person faces left (toward cart) while pushing, then flips to face viewer
-  const facingViewer = frame >= T.leaveEnd;
+  // ── Arms ──────────────────────────────────────────────────────────────────
+  const leftArmPush  = -70;
+  const rightArmPush = -50;
 
-  // ── 3. Wave arm (36+) ─────────────────────────────────────────────────────
-  // While pushing: right arm is down (~10°)
-  // After leaving: arm waves between -140° and -60° continuously
-  let waveAngle: number;
+  const leftArmStep = interpolate(stepP, [0, 1], [leftArmPush, 15]);
+
+  let rightArmAngle: number;
   if (frame < T.waveStart) {
-    // Arm hangs naturally while pushing / stepping away
-    waveAngle = frame < T.leaveStart ? 10 : interpolate(leaveP, [0, 1], [10, -20]);
+    rightArmAngle = frame < T.stepStart
+      ? rightArmPush
+      : interpolate(stepP, [0, 1], [rightArmPush, -30]);
   } else {
-    // Smooth sine wave — arm sweeps up and down
-    const waveCycle = (frame - T.waveStart) * 0.22;
-    waveAngle = -90 + Math.sin(waveCycle) * 50;
+    const waveCycle = (frame - T.waveStart) * 0.24;
+    rightArmAngle = -100 + Math.sin(waveCycle) * 55;
   }
 
-  // Push arm angle — reaches forward while pushing
-  const pushArmAngle = frame < T.leaveStart
-    ? interpolate(pushP, [0, 1], [-10, -55])
-    : interpolate(leaveP, [0, 1], [-55, -10]);
+  const leftArmAngle = frame < T.stepStart ? leftArmPush : leftArmStep;
 
-  // ── 4. Fade (70 → 75) ─────────────────────────────────────────────────────
-  const sceneOpacity = interpolate(frame, [T.fadeStart, T.fadeEnd], [1, 0], {
+  // ── Facing ────────────────────────────────────────────────────────────────
+  const facingRight = frame < T.stepEnd;
+
+  // ── Fade ──────────────────────────────────────────────────────────────────
+  const opacity = interpolate(frame, [T.fadeStart, T.fadeEnd], [1, 0], {
     extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
 
-  // Cart stays on screen after person leaves (fades with scene)
-  const cartOpacity = sceneOpacity;
-  const personOpacity = sceneOpacity;
-
-  // ── Ground line Y
-  const groundY = CART_REST_Y + WHEEL_R + 4;
-
   return (
-    <AbsoluteFill style={{ background: "#060810" }}>
+    <AbsoluteFill>
       <svg
-        style={{ position: "absolute", left: 0, top: 0, width: VIDEO_W, height: VIDEO_H }}
+        style={{ position: "absolute", left: 0, top: 0, width: VIDEO_W, height: VIDEO_H, overflow: "hidden" }}
         viewBox={`0 0 ${VIDEO_W} ${VIDEO_H}`}
       >
-        {/* Ground shadow */}
+        {/* Ground shadow — grows as cart arrives */}
         <ellipse
-          cx={VIDEO_W / 2} cy={groundY + 10}
-          rx={220} ry={18}
-          fill="rgba(0,0,0,0.35)"
-          opacity={sceneOpacity}
+          cx={CART_REST_X} cy={GROUND_Y + 16}
+          rx={interpolate(pushEased, [0, 1], [0, 170])} ry={12}
+          fill="rgba(0,0,0,0.18)" opacity={opacity}
         />
 
         {/* Cart */}
-        <Cart x={cartX} y={cartY} opacity={cartOpacity} />
+        <Cart cx={cartX} groundY={GROUND_Y} opacity={opacity} wheelRot={wheelRot} />
 
         {/* Character */}
         <Character
-          x={personX}
-          y={groundY}
-          waveAngle={waveAngle}
-          pushAngle={pushLean}
-          flip={!facingViewer}
-          opacity={personOpacity}
+          cx={personX}
+          groundY={GROUND_Y}
+          lean={lean}
+          leftArmAngle={leftArmAngle}
+          rightArmAngle={rightArmAngle}
+          facingRight={facingRight}
+          opacity={opacity}
         />
       </svg>
-
-      {/* Caption */}
-      <div style={{
-        position:   "absolute",
-        bottom:     VIDEO_H / 2 - 260,
-        left:       "50%",
-        transform:  "translateX(-50%)",
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize:   36,
-        fontWeight: 700,
-        color:      "#FFFFFF",
-        whiteSpace: "nowrap",
-        opacity:    interpolate(frame, [T.leaveEnd, T.leaveEnd + 8], [0, 1], {
-          extrapolateLeft: "clamp", extrapolateRight: "clamp",
-        }) * sceneOpacity,
-        letterSpacing: "0.02em",
-      }}>
-        and much easier to manage.
-      </div>
     </AbsoluteFill>
   );
 };

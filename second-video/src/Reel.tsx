@@ -11,6 +11,7 @@ import { Scene7IntroPunch } from "./Scene7Intro";
 import { Scene7 } from "./Scene7";
 import { Scene8 } from "./Scene8";
 import { Scene9 } from "./Scene9";
+import { Scene10 } from "./Scene10";
 
 // ─── Timing (frames @ 30fps) ──────────────────────────────────────────────────
 export const SCENE_DURATIONS = {
@@ -146,7 +147,7 @@ export const Reel: React.FC = () => (
       </Series.Sequence>
 
       <Series.Sequence durationInFrames={SCENE_DURATIONS.s10}>
-        <Placeholder label="10 — CTA" color="#00FF94" />
+        <Scene10 />
       </Series.Sequence>
     </Series>
   </AbsoluteFill>
