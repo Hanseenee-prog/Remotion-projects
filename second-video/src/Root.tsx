@@ -2,7 +2,7 @@ import "./index.css";
 import { Composition } from "remotion";
 import { Reel } from "./Reel";
 
-const TOTAL_DURATION = 47 * 60; // 30 seconds at 30 fps
+const TOTAL_DURATION = 1480; // 30 seconds at 30 fps
 
 export const RemotionRoot: React.FC = () => {
   return (

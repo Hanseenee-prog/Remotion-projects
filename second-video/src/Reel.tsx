@@ -10,6 +10,7 @@ import { Scene6ctd } from "./Scene6ctd";
 import { Scene7IntroPunch } from "./Scene7Intro";
 import { Scene7 } from "./Scene7";
 import { Scene8 } from "./Scene8";
+import { Scene9 } from "./Scene9";
 
 // ─── Timing (frames @ 30fps) ──────────────────────────────────────────────────
 export const SCENE_DURATIONS = {
@@ -24,7 +25,7 @@ export const SCENE_DURATIONS = {
   s07:  7.8 * 30,   // 230f — The Bubble
   s08:  6 * 30,   // 180f — The Solution
   s09:  5 * 30,   // 150f — The Payoff
-  s10:  3 * 30,   //  90f — CTA
+  s10:  4.5 * 30,   //  90f — CTA
 } as const;
 
 export const TOTAL_DURATION = Object.values(SCENE_DURATIONS).reduce(
@@ -141,7 +142,7 @@ export const Reel: React.FC = () => (
       </Series.Sequence>
 
       <Series.Sequence durationInFrames={SCENE_DURATIONS.s09}>
-        <Placeholder label="09 — The Payoff" color="#4D9FFF" />
+        <Scene9 />
       </Series.Sequence>
 
       <Series.Sequence durationInFrames={SCENE_DURATIONS.s10}>
