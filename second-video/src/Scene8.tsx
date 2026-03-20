@@ -102,8 +102,20 @@ export const Scene8: React.FC = () => {
   const borderColor   = `rgba(${borderR},${borderG},${borderB},${borderAlpha})`;
 
   const moveSpring = spring({ fps, frame, config: { damping: 18, stiffness: 100, mass: 1.0 }, durationInFrames: T.moveEnd });
-  const parentY    = interpolate(moveSpring, [0, 1], [PARENT_Y0, PARENT_Y1]);
-  const parentW    = interpolate(moveSpring, [0, 1], [PARENT_W0, PARENT_W1]);
+  const moveP      = Math.min(1, moveSpring); // 0→1: center → top position
+
+  // Parent returns to center alongside the code window exit
+  const parentReturnSpring = spring({ fps, frame: frame - T.returnStart, config: { damping: 18, stiffness: 100, mass: 1.0 }, durationInFrames: 22 });
+  const returnP            = frame >= T.returnStart ? Math.min(1, parentReturnSpring) : 0;
+
+  const parentY = frame >= T.returnStart
+    ? interpolate(returnP, [0, 1], [PARENT_Y1, PARENT_Y0])
+    : interpolate(moveP,   [0, 1], [PARENT_Y0, PARENT_Y1]);
+
+  const parentW = frame >= T.returnStart
+    ? interpolate(returnP, [0, 1], [PARENT_W1, PARENT_W0])
+    : interpolate(moveP,   [0, 1], [PARENT_W0, PARENT_W1]);
+
   const parentX    = (VIDEO_W - parentW) / 2;
 
   const btnSideSpring = spring({ fps, frame: frame - 8, config: { damping: 14, stiffness: 130, mass: 0.8 }, durationInFrames: 32 });
@@ -222,7 +234,7 @@ export const Scene8: React.FC = () => {
         height:          PARENT_H,
         borderRadius:    28,
         background:      "transparent",
-        border:          `3px solid ${borderColor}`,
+        border:          `6px solid ${borderColor}`,
         zIndex:          10,
         overflow:        "visible",
       }}>
@@ -401,7 +413,7 @@ export const Scene8: React.FC = () => {
           transform:       `scale(${badgeScale})`,
           transformOrigin: "center center",
           opacity:         badgeOpacity,
-          zIndex:          10,
+          zIndex:          15,
           width:           BADGE_SIZE, height: BADGE_SIZE,
           borderRadius:    20,
           background:      "rgba(255,189,46,0.15)",
