@@ -51,7 +51,7 @@ const H = CANVAS.height;   // 1920
 
 // T-line geometry
 const STEM_X      = W / 2;
-const STEM_TOP    = SAFE.top + 60;                  // 220
+const STEM_TOP    = SAFE.top + 360;                  // 220
 const STEM_BOTTOM = Math.round(H / 2 + H / 5);     // 1344
 
 const ARM_Y     = STEM_BOTTOM;
@@ -80,7 +80,7 @@ const ROCKET_H = 594;   // Math.round(660 * 0.9)
 // Rocket sits on top of the platform (not the legs)
 // so rocket bottom = pad platform top = PAD_TOP_Y
 const ROCKET_BOT_Y = PAD_TOP_Y;
-const ROCKET_TOP_Y = ROCKET_BOT_Y - ROCKET_H;
+// const ROCKET_TOP_Y = ROCKET_BOT_Y - ROCKET_H;
 
 // Code below arm line — centred under each branch
 const CODE_TOP   = ARM_Y + 32;
