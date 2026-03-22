@@ -287,13 +287,13 @@ export const Scene2: React.FC = () => {
   const qOp     = 1 - prog(frame, 50, 58);
 
   // 3. Full-screen overlay + blur fade-in
-  const overlayP    = prog(frame, 50, 60, "out");
+  const overlayP    = prog(frame, 40, 50, "out");
   // 3b. Overlay fade-out on exit
   const overlayExP  = prog(frame, 110, 120, "inOut");
   const overlayOp   = overlayP * (1 - overlayExP);
 
   // 4. Code window slide-in (from below)
-  const winP    = prog(frame, 60, 75, "out");
+  const winP    = prog(frame, 50, 65, "out");
   // 4b. Code window slide-out on exit
   const winExP  = prog(frame, 110, 115, "inOut");
   const winSlideY   = interpolate(winP,  [0, 1], [ARM_Y + 260, WIN_Y]);
@@ -302,10 +302,10 @@ export const Scene2: React.FC = () => {
   const finalWinOp  = winP * (1 - winExP);
 
   // 5. Snippet A flight (from Scene 1 position → line 1 in window)
-  const snipAP  = prog(frame, 64, 76, "inOut");
+  const snipAP  = prog(frame, 54, 66, "inOut");
 
   // 6. Snippet B flight (from Scene 1 position → line 2 in window)
-  const snipBP  = prog(frame, 68, 78, "inOut");
+  const snipBP  = prog(frame, 58, 68, "inOut");
 
   // ─── END TIMING ──────────────────────────────────────────────────────────
 
@@ -345,7 +345,7 @@ export const Scene2: React.FC = () => {
   const snipExOp = 1 - winExP;
 
   // Question text Y — immediately above the top of the stem
-  const Q_TEXT_Y = STEM_TOP - 100;
+  const Q_TEXT_Y = STEM_TOP - 150;
 
   const cursorOn = Math.floor(frame / 9) % 2 === 0;
 
