@@ -1,274 +1,441 @@
-import React from "react";
-import {
-  AbsoluteFill,
-  interpolate,
-  spring,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
+/**
+ * Scene 1 — 160 frames (~5.3 s)
+ *
+ * Changes from previous version:
+ *   - Launch pads sit ABOVE the T-line (pad bottom = ARM_Y)
+ *   - Rockets are 3× the previous height: 660px tall, 432px wide
+ *   - Completely redesigned rocket SVG (sleeker, multi-section, larger letter)
+ *   - Letter on body is fontSize 22 in viewBox coords — large and clear
+ *   - Tokens: setTimeout(launchA, 0); and launchB();
+ *   - Code snippets centered under their respective column (ARM_LEFT→STEM_X and STEM_X→ARM_RIGHT)
+ *
+ * Timeline (scene-local frames):
+ *   1–25    Both pads pop up (scaleY from bottom)
+ *   30–80   Rocket A slides in from left
+ *   115–135 setTimeout(launchA, 0); types out under left branch
+ *   140–155 Rocket B slides in from right
+ *   155+    launchB(); types out under right branch
+ */
 
-// ─── Inline syntax token ──────────────────────────────────────────────────────
-const Tok: React.FC<{ color: string; children: React.ReactNode }> = ({ color, children }) => (
-  <span style={{ color }}>{children}</span>
+import React from "react";
+import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
+import { SAFE, CANVAS, COLORS, FONTS } from "./tokens";
+
+// ─── Palette ─────────────────────────────────────────────────────────────────
+
+// Rocket A — orange
+const A_BODY    = "#FF7A20";
+const A_DARK    = "#8C3400";
+const A_MID     = "#D45A00";
+const A_STRIPE  = "#FFB347";
+const A_WINDOW  = "#FFE4CC";
+
+// Rocket B — blue
+const B_BODY    = "#4A9FFF";
+const B_DARK    = "#0A2A6E";
+const B_MID     = "#1A5CC8";
+const B_STRIPE  = "#80C4FF";
+const B_WINDOW  = "#CCE8FF";
+
+const PAD_COLOR  = "#5A5A6A";
+const PAD_LIGHT  = "#8A8A9A";
+const PAD_DARK   = "#2E2E3A";
+
+// ─── Layout ──────────────────────────────────────────────────────────────────
+
+const STROKE     = 7;
+const LINE_COLOR = "rgba(255,255,255,0.72)";
+
+const W = CANVAS.width;    // 1080
+const H = CANVAS.height;   // 1920
+
+// T-line geometry
+const STEM_X      = W / 2;
+const STEM_TOP    = SAFE.top + 60;                  // 220
+const STEM_BOTTOM = Math.round(H / 2 + H / 5);     // 1344
+
+const ARM_Y     = STEM_BOTTOM;
+const ARM_LEFT  = SAFE.left;                        // 40
+const ARM_RIGHT = W - SAFE.right;                  // 920
+
+// Column centres
+const COL_A_CX = Math.round((ARM_LEFT + STEM_X) / 2);   // 290
+const COL_B_CX = Math.round((STEM_X + ARM_RIGHT) / 2);  // 730
+
+// Launch pad — same size as before
+const PAD_W     = 260;
+const PAD_H     = 32;
+const PAD_LEG_H = 44;
+const PAD_TOTAL = PAD_H + PAD_LEG_H;   // 76px tall including legs
+
+// Pad sits ABOVE the arm line — pad bottom (including legs) = ARM_Y
+const PAD_BOT_Y     = ARM_Y;
+const PAD_TOP_Y     = PAD_BOT_Y - PAD_TOTAL;      // platform top edge
+
+// Rocket — 2.7× previous rendered size (3× then scaled to 0.9)
+const ROCKET_W = 389;   // Math.round(432 * 0.9)
+const ROCKET_H = 594;   // Math.round(660 * 0.9)
+// viewBox stays at 72×110 — SVG scales up cleanly
+
+// Rocket sits on top of the platform (not the legs)
+// so rocket bottom = pad platform top = PAD_TOP_Y
+const ROCKET_BOT_Y = PAD_TOP_Y;
+const ROCKET_TOP_Y = ROCKET_BOT_Y - ROCKET_H;
+
+// Code below arm line — centred under each branch
+const CODE_TOP   = ARM_Y + 32;
+const CODE_FONT  = 36;
+const CODE_LH    = 52;
+// Each code block spans its full branch width, text-align center handles the rest
+const CODE_W_A   = STEM_X - ARM_LEFT;   // 500px
+const CODE_W_B   = ARM_RIGHT - STEM_X;  // 380px
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function easeOut(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+function easeInOut(t: number): number {
+  return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+}
+function prog(frame: number, start: number, end: number, ease: "out" | "inOut" = "inOut"): number {
+  const t = Math.max(0, Math.min(1, (frame - start) / (end - start)));
+  return ease === "out" ? easeOut(t) : easeInOut(t);
+}
+function visibleChars(frame: number, startFrame: number, charPeriod = 1.6): number {
+  return Math.max(0, Math.floor((frame - startFrame) / charPeriod));
+}
+
+// ─── Tokens ──────────────────────────────────────────────────────────────────
+
+type Token = { text: string; color: string };
+
+// setTimeout(launchA, 0);
+const TOKENS_A: Token[] = [
+  { text: "setTimeout", color: COLORS.keyword     },
+  { text: "(",          color: COLORS.punctuation },
+  { text: "launchA",    color: COLORS.fnName      },
+  { text: ", ",         color: COLORS.punctuation },
+  { text: "0",          color: COLORS.number      },
+  { text: ");",         color: COLORS.punctuation },
+];
+
+// launchB();
+const TOKENS_B: Token[] = [
+  { text: "launchB", color: COLORS.fnName      },
+  { text: "();",     color: COLORS.punctuation },
+];
+
+const flatA = TOKENS_A.map((t) => t.text).join("");
+const flatB = TOKENS_B.map((t) => t.text).join("");
+
+function renderTokens(tokens: Token[], charsToShow: number): React.ReactNode {
+  let remaining = charsToShow;
+  return tokens.map((token, i) => {
+    if (remaining <= 0) return null;
+    const slice = token.text.slice(0, remaining);
+    remaining -= token.text.length;
+    return <span key={i} style={{ color: token.color }}>{slice}</span>;
+  });
+}
+
+// ─── Rocket SVG ──────────────────────────────────────────────────────────────
+// viewBox: 0 0 72 110  (rendered at 432×660 via width/height props)
+// Orientation: nose at top, flame at bottom (upright on pad)
+// Design: elongated body with panel lines, upper+lower sections, large letter
+
+const RocketA: React.FC = () => (
+  <svg width={ROCKET_W} height={ROCKET_H} viewBox="0 0 72 110" fill="none">
+
+    {/* ── Nozzle bell ── */}
+    <path d="M28 102 Q36 110 44 102 L46 96 L26 96Z" fill={A_DARK} />
+    <path d="M30 102 Q36 108 42 102 L43 98 L29 98Z" fill={A_MID} opacity={0.6} />
+
+    {/* ── Engine section ── */}
+    <rect x="20" y="82" width="32" height="16" rx="3" fill={A_DARK} />
+    <rect x="24" y="84" width="24" height="4"  rx="2" fill={A_MID} opacity={0.5} />
+
+    {/* ── Lower body ── */}
+    <rect x="16" y="54" width="40" height="30" rx="2" fill={A_BODY} />
+    {/* Left shadow panel */}
+    <rect x="16" y="54" width="8"  height="30" rx="2" fill="rgba(0,0,0,0.22)" />
+    {/* Panel line */}
+    <line x1="36" y1="56" x2="36" y2="82" stroke={A_DARK} strokeWidth="1.5" opacity={0.5} />
+    {/* Horizontal band */}
+    <rect x="16" y="68" width="40" height="5" fill={A_STRIPE} opacity={0.35} />
+
+    {/* ── Fins ── */}
+    {/* Left fin */}
+    <path d="M16 72 L4 96 L16 90Z" fill={A_DARK} />
+    <path d="M16 72 L6 92 L16 88Z" fill={A_MID} opacity={0.45} />
+    {/* Right fin */}
+    <path d="M56 72 L68 96 L56 90Z" fill={A_DARK} />
+    <path d="M56 72 L66 92 L56 88Z" fill={A_MID} opacity={0.45} />
+
+    {/* ── Upper body ── */}
+    <rect x="16" y="28" width="40" height="28" rx="2" fill={A_BODY} />
+    <rect x="16" y="28" width="8"  height="28" rx="2" fill="rgba(0,0,0,0.20)" />
+    {/* Upper right highlight */}
+    <rect x="50" y="30" width="4" height="24" rx="1" fill="rgba(255,255,255,0.12)" />
+
+    {/* ── Porthole ── */}
+    <circle cx="36" cy="42" r="9"  fill={A_DARK} />
+    <circle cx="36" cy="42" r="7"  fill={A_WINDOW} opacity={0.25} />
+    <circle cx="36" cy="42" r="5"  fill={A_WINDOW} opacity={0.55} />
+    {/* Porthole glint */}
+    <circle cx="33" cy="39" r="2"  fill="rgba(255,255,255,0.65)" />
+
+    {/* ── Letter A on lower body ── */}
+    <text
+      x="36" y="76"
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fontFamily="'Syne', sans-serif"
+      fontWeight="900"
+      fontSize="22"
+      fill="rgba(255,255,255,0.95)"
+      letterSpacing="-1"
+    >A</text>
+
+    {/* ── Nose cone ── */}
+    <path d="M16 28 Q36 2 56 28Z" fill={A_MID} />
+    {/* Nose tip highlight */}
+    <path d="M27 22 Q36 5 45 22" stroke="rgba(255,255,255,0.30)" strokeWidth="1.5" fill="none" />
+    {/* Nose seam */}
+    <line x1="36" y1="4" x2="36" y2="28" stroke={A_DARK} strokeWidth="1" opacity={0.4} />
+
+  </svg>
 );
 
-// ─── Syntax palette ───────────────────────────────────────────────────────────
-const SYN = {
-  plain:   "#ABB2BF",
-  method:  "#C678DD",  // purple — forEach, addEventListener, backgroundColor
-  string:  "#A5D6FF",  // light blue
-  ident:   "#D19A66",  // orange — named param e.g. button in forEach((button))
-  arrow:   "#E06C75",  // coral — => and =
-  punct:   "#ABB2BF",
-  cursor:  "#FFFFFF",
-};
+const RocketB: React.FC = () => (
+  <svg width={ROCKET_W} height={ROCKET_H} viewBox="0 0 72 110" fill="none">
 
-// ─── Layout constants ─────────────────────────────────────────────────────────
-// font 56px — big and visible. Each line div has overflow:hidden so
-// the width-reveal typewriter still works even though text is wider than the window.
-const WIN_W      = 1040;
-const FONT_SIZE  = 40;
-const FONT_W     = 600;   // bold
-const BOTTOM_PAD = 250;
-const VIDEO_H    = 1920;
-// titlebar 96 + padding (44+52) + 3 lines × (56×1.85≈104px) = 96+96+312 = 504
-const WIN_H_EST  = 504;
+    {/* ── Nozzle bell ── */}
+    <path d="M28 102 Q36 110 44 102 L46 96 L26 96Z" fill={B_DARK} />
+    <path d="M30 102 Q36 108 42 102 L43 98 L29 98Z" fill={B_MID} opacity={0.6} />
 
-// Typing frame ranges
-const TYPE1_START = 10;
-const TYPE1_END   = 38;
-const TYPE3_START = 38;
-const TYPE3_END   = 44;
-const TYPE2_START = 75;
-const TYPE2_END   = 112;
+    {/* ── Engine section ── */}
+    <rect x="20" y="82" width="32" height="16" rx="3" fill={B_DARK} />
+    <rect x="24" y="84" width="24" height="4"  rx="2" fill={B_MID} opacity={0.5} />
 
-export const Scene01Hook: React.FC = () => {
+    {/* ── Lower body ── */}
+    <rect x="16" y="54" width="40" height="30" rx="2" fill={B_BODY} />
+    <rect x="16" y="54" width="8"  height="30" rx="2" fill="rgba(0,0,0,0.22)" />
+    <line x1="36" y1="56" x2="36" y2="82" stroke={B_DARK} strokeWidth="1.5" opacity={0.5} />
+    <rect x="16" y="68" width="40" height="5" fill={B_STRIPE} opacity={0.35} />
+
+    {/* ── Fins ── */}
+    <path d="M16 72 L4 96 L16 90Z" fill={B_DARK} />
+    <path d="M16 72 L6 92 L16 88Z" fill={B_MID} opacity={0.45} />
+    <path d="M56 72 L68 96 L56 90Z" fill={B_DARK} />
+    <path d="M56 72 L66 92 L56 88Z" fill={B_MID} opacity={0.45} />
+
+    {/* ── Upper body ── */}
+    <rect x="16" y="28" width="40" height="28" rx="2" fill={B_BODY} />
+    <rect x="16" y="28" width="8"  height="28" rx="2" fill="rgba(0,0,0,0.20)" />
+    <rect x="50" y="30" width="4"  height="24" rx="1" fill="rgba(255,255,255,0.12)" />
+
+    {/* ── Porthole ── */}
+    <circle cx="36" cy="42" r="9"  fill={B_DARK} />
+    <circle cx="36" cy="42" r="7"  fill={B_WINDOW} opacity={0.25} />
+    <circle cx="36" cy="42" r="5"  fill={B_WINDOW} opacity={0.55} />
+    <circle cx="33" cy="39" r="2"  fill="rgba(255,255,255,0.65)" />
+
+    {/* ── Letter B on lower body — counter-mirrored against parent scaleX(-1) ── */}
+    {/* Parent div has scaleX(-1) to flip the rocket; this g undoes that for the text only */}
+    <g transform="translate(72,0) scale(-1,1)">
+      <text
+        x="36" y="76"
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontFamily="'Syne', sans-serif"
+        fontWeight="900"
+        fontSize="22"
+        fill="rgba(255,255,255,0.95)"
+        letterSpacing="-1"
+      >B</text>
+    </g>
+
+    {/* ── Nose cone ── */}
+    <path d="M16 28 Q36 2 56 28Z" fill={B_MID} />
+    <path d="M27 22 Q36 5 45 22" stroke="rgba(255,255,255,0.28)" strokeWidth="1.5" fill="none" />
+    <line x1="36" y1="4" x2="36" y2="28" stroke={B_DARK} strokeWidth="1" opacity={0.4} />
+
+  </svg>
+);
+
+// ─── Launch pad ───────────────────────────────────────────────────────────────
+// Pad bottom (including legs) sits flush on the ARM_Y line
+
+const Pad: React.FC = () => (
+  <svg
+    width={PAD_W}
+    height={PAD_TOTAL}
+    viewBox={`0 0 ${PAD_W} ${PAD_TOTAL}`}
+    fill="none"
+  >
+    {/* Platform top edge highlight */}
+    <rect x="0"  y="0"        width={PAD_W} height={3}      rx="1" fill={PAD_LIGHT} opacity={0.6} />
+    {/* Platform body */}
+    <rect x="0"  y="3"        width={PAD_W} height={PAD_H - 3} rx="3" fill={PAD_COLOR} />
+    {/* Left shadow */}
+    <rect x="0"  y="3"        width={16}    height={PAD_H - 3} rx="3" fill="rgba(0,0,0,0.25)" />
+    {/* Greeble slots */}
+    <rect x="24" y="12"       width="40"    height="8"   rx="2" fill={PAD_DARK} />
+    <rect x={PAD_W - 64} y="12" width="40" height="8"   rx="2" fill={PAD_DARK} />
+    {/* Centre gap */}
+    <rect x={PAD_W / 2 - 6} y="10" width="12" height="12" rx="2" fill={PAD_DARK} opacity={0.7} />
+
+    {/* Left leg */}
+    <rect x="28"          y={PAD_H} width="18" height={PAD_LEG_H} rx="3" fill={PAD_COLOR} opacity={0.75} />
+    {/* Left leg inner */}
+    <rect x="32"          y={PAD_H} width="8"  height={PAD_LEG_H - 8} rx="2" fill={PAD_DARK} opacity={0.4} />
+    {/* Right leg */}
+    <rect x={PAD_W - 46}  y={PAD_H} width="18" height={PAD_LEG_H} rx="3" fill={PAD_COLOR} opacity={0.75} />
+    <rect x={PAD_W - 42}  y={PAD_H} width="8"  height={PAD_LEG_H - 8} rx="2" fill={PAD_DARK} opacity={0.4} />
+
+    {/* Foot flanges */}
+    <rect x="18"          y={PAD_H + PAD_LEG_H - 8} width="38" height="8" rx="2" fill={PAD_LIGHT} opacity={0.5} />
+    <rect x={PAD_W - 56}  y={PAD_H + PAD_LEG_H - 8} width="38" height="8" rx="2" fill={PAD_LIGHT} opacity={0.5} />
+  </svg>
+);
+
+// ─── Scene ───────────────────────────────────────────────────────────────────
+
+export const Scene1: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
 
-  // ── 1. Window: slide in from top, scale up ────────────────────────────────
-  const entranceY     = spring({ frame, fps, config: { damping: 14, stiffness: 100 } });
-  const windowY       = interpolate(entranceY, [0, 1], [-900, 0]);
+  // Pads: frames 1–25
+  const padP    = prog(frame, 1, 15, "out");
+  const padOp   = Math.min(1, padP * 2);
 
-  const entranceScale = spring({ frame, fps, config: { damping: 12, stiffness: 120 } });
-  const windowScale   = interpolate(entranceScale, [0, 1], [0.6, 1]);
+  // Rocket A: frames 30–55 (tightened from 30–80)
+  const rkAP    = prog(frame, 15, 25, "out");
+  // Rocket B: frames 140–155 (unchanged)
+  const rkBP    = prog(frame, 130, 145, "out");
 
-  // ── 2. Window shifts down — bottom lands at VIDEO_H − BOTTOM_PAD ─────────
-  const centeredTop  = VIDEO_H / 2 - WIN_H_EST / 2;
-  const targetTop    = VIDEO_H - BOTTOM_PAD - WIN_H_EST;
-  const shiftAmount  = targetTop - centeredTop;
+  // Code A: starts at 58, types fast — ~10 frames to complete
+  const charsA  = Math.min(flatA.length, visibleChars(frame, 30, 0.65));
+  // Code B: unchanged
+  const charsB  = Math.min(flatB.length, visibleChars(frame, 150, 1.1));
 
-  const shiftSpring  = spring({ frame: frame - 45, fps, config: { damping: 14, stiffness: 90 } });
-  const windowShift  = interpolate(shiftSpring, [0, 1], [0, shiftAmount]);
-  const finalWindowY = windowY + windowShift;
+  const cursorOn = Math.floor(frame / 9) % 2 === 0;
 
-  // ── 3. Button: exaggerated pop-in ─────────────────────────────────────────
-  const btnEntrance   = spring({ frame: frame - 55, fps, config: { damping: 8, mass: 0.8, stiffness: 150 } });
-  const finalBtnScale = btnEntrance;
-  const btnOpacity    = btnEntrance > 0.01 ? 1 : 0;
-
-  // ── 4. Typewriter — width interpolation ───────────────────────────────────
-  const typeLine1 = interpolate(frame, [TYPE1_START, TYPE1_END], [0, 100], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
-  });
-  const typeLine3 = interpolate(frame, [TYPE3_START, TYPE3_END], [0, 100], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
-  });
-  const typeLine2 = interpolate(frame, [TYPE2_START, TYPE2_END], [0, 100], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
-  });
-
-  // ── 5. Cursor — blinks every 8 frames while actively typing ──────────────
-  const cursorOn   = Math.floor(frame / 8) % 2 === 0;
-  const cursorChar = cursorOn ? "▌" : " ";
-
-  const showCursor1 = frame >= TYPE1_START && frame < TYPE1_END;
-  const showCursor3 = frame >= TYPE3_START && frame < TYPE3_END;
-  const showCursor2 = frame >= TYPE2_START && frame < TYPE2_END;
+  // Rocket A slides from off-screen left → centred on COL_A_CX
+  const rkAX = interpolate(rkAP, [0, 1], [-ROCKET_W, COL_A_CX - ROCKET_W / 2]);
+  // Rocket B slides from off-screen right → centred on COL_B_CX
+  const rkBX = interpolate(rkBP, [0, 1], [W + ROCKET_W, COL_B_CX - ROCKET_W / 2]);
 
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
+    <AbsoluteFill>
 
-      {/* ── Button — lower on screen, bigger, neutral emoji ─────────────────── */}
-      <div
-        style={{
-          position: "absolute",
-          top: "32%",   // moved down from 24%
-          transform: `scale(${finalBtnScale})`,
-          opacity: btnOpacity,
-          zIndex: 10,
-        }}
+      {/* ── T-line (always at full extent from frame 0) ───────────────────── */}
+      <svg
+        width={W} height={H}
+        style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
       >
-        <div
-          style={{
-            backgroundColor: "#FFFFFF",
-            color: "#111111",
-            width: 420,
-            height: 130,
-            borderRadius: 24,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 16,
-            fontSize: 46,
-            fontWeight: 700,
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: "0.02em",
-            boxShadow: "0 24px 60px rgba(0,0,0,0.55)",
-          }}
-        >
-          Click Me
-          <span style={{ fontSize: 48, lineHeight: 1 }}>😐</span>
+        <line
+          x1={STEM_X} y1={STEM_TOP} x2={STEM_X} y2={STEM_BOTTOM}
+          stroke={LINE_COLOR} strokeWidth={STROKE} strokeLinecap="round"
+        />
+        <line
+          x1={STEM_X} y1={ARM_Y} x2={ARM_LEFT} y2={ARM_Y}
+          stroke={LINE_COLOR} strokeWidth={STROKE} strokeLinecap="round"
+        />
+        <line
+          x1={STEM_X} y1={ARM_Y} x2={ARM_RIGHT} y2={ARM_Y}
+          stroke={LINE_COLOR} strokeWidth={STROKE} strokeLinecap="round"
+        />
+      </svg>
+
+      {/* ── Pad A — above left arm ────────────────────────────────────────── */}
+      {padP > 0 && (
+        <div style={{
+          position:        "absolute",
+          // Pad total bottom = ARM_Y, so top = ARM_Y - PAD_TOTAL
+          top:             PAD_BOT_Y - PAD_TOTAL,
+          left:            COL_A_CX - PAD_W / 2,
+          transformOrigin: "bottom center",
+          transform:       `scaleY(${padP})`,
+          opacity:         padOp,
+        }}>
+          <Pad />
         </div>
+      )}
+
+      {/* ── Pad B — above right arm ───────────────────────────────────────── */}
+      {padP > 0 && (
+        <div style={{
+          position:        "absolute",
+          top:             PAD_BOT_Y - PAD_TOTAL,
+          left:            COL_B_CX - PAD_W / 2,
+          transformOrigin: "bottom center",
+          transform:       `scaleY(${padP})`,
+          opacity:         padOp,
+        }}>
+          <Pad />
+        </div>
+      )}
+
+      {/* ── Rocket A ─────────────────────────────────────────────────────── */}
+      {rkAP > 0 && (
+        <div style={{
+          position: "absolute",
+          top:      ROCKET_BOT_Y - ROCKET_H,
+          left:     rkAX,
+        }}>
+          <RocketA />
+        </div>
+      )}
+
+      {/* ── Code A — centered under left branch ──────────────────────────── */}
+      <div style={{
+        position:   "absolute",
+        top:        CODE_TOP,
+        left:       ARM_LEFT,
+        width:      CODE_W_A,
+        textAlign:  "center",
+        fontFamily: FONTS.mono,
+        fontSize:   CODE_FONT,
+        lineHeight: `${CODE_LH}px`,
+        whiteSpace: "pre",
+        overflow:   "hidden",
+      }}>
+        {renderTokens(TOKENS_A, charsA)}
+        {charsA > 0 && charsA < flatA.length && (
+          <span style={{ color: COLORS.white, opacity: cursorOn ? 1 : 0 }}>|</span>
+        )}
       </div>
 
-      {/* ── Code Window ───────────────────────────────────────────────────── */}
-      <div
-        style={{
-          transform: `translateY(${finalWindowY}px) scale(${windowScale})`,
-          zIndex: 5,
-          width: WIN_W,
-          background: "#0D1117",
-          borderRadius: 16,
-          overflow: "hidden",
-          boxShadow: "0 30px 80px rgba(0,0,0,0.85)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          fontFamily: "'JetBrains Mono', monospace",
-        }}
-      >
-
-        {/* ── Title bar ── */}
-        <div
-          style={{
-            height: 96,
-            background: "#161B22",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 32px",
-            position: "relative",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
-          }}
-        >
-          {/* Traffic light dots */}
-          <div style={{ display: "flex", gap: 12 }}>
-            {["#FF5F56", "#FFBD2E", "#27C93F"].map((c) => (
-              <div
-                key={c}
-                style={{ width: 20, height: 20, borderRadius: "50%", background: c }}
-              />
-            ))}
-          </div>
-
-          {/* Editor tab */}
-          <div
-            style={{
-              position: "absolute",
-              left: 148,
-              bottom: 0,
-              height: 72,
-              background: "#0D1117",
-              padding: "0 32px",
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-              borderRadius: "10px 10px 0 0",
-              fontSize: 26,
-              fontWeight: 500,
-              color: "#E6EDF3",
-            }}
-          >
-            {/* JS badge */}
-            <div
-              style={{
-                background: "#F7DF1E",
-                color: "#000",
-                fontWeight: 900,
-                fontSize: 18,
-                width: 32,
-                height: 32,
-                display: "flex",
-                alignItems: "flex-end",
-                justifyContent: "flex-end",
-                padding: "0 3px 2px 0",
-                borderRadius: 5,
-                fontFamily: "sans-serif",
-                flexShrink: 0,
-              }}
-            >
-              JS
-            </div>
-            scripts.js
-          </div>
+      {/* ── Rocket B ─────────────────────────────────────────────────────── */}
+      {rkBP > 0 && (
+        <div style={{
+          position:  "absolute",
+          top:       ROCKET_BOT_Y - ROCKET_H,
+          left:      rkBX,
+          transform: "scaleX(-1)",
+        }}>
+          <RocketB />
         </div>
+      )}
 
-        {/* ── Code body — overflow hidden so large text doesn't bleed ── */}
-        <div
-          style={{
-            padding: "44px 48px 52px",
-            fontSize: FONT_SIZE,
-            fontWeight: FONT_W,
-            lineHeight: 1.85,
-            color: SYN.plain,
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-            overflow: "hidden",
-          }}
-        >
-
-          {/* Line 1: button.addEventListener('click', () => { */}
-          <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
-            <div style={{ overflow: "hidden", whiteSpace: "nowrap", width: `${typeLine1}%` }}>
-              <Tok color={SYN.plain}>button.</Tok>
-              <Tok color={SYN.method}>addEventListener</Tok>
-              <Tok color={SYN.punct}>(</Tok>
-              <Tok color={SYN.string}>'click'</Tok>
-              <Tok color={SYN.punct}>, () </Tok>
-              <Tok color={SYN.arrow}>={">"}</Tok>
-              <Tok color={SYN.punct}> {"{"}</Tok>
-            </div>
-            {showCursor1 && (
-              <span style={{ color: SYN.cursor, fontWeight: 400, marginLeft: 2 }}>
-                {cursorChar}
-              </span>
-            )}
-          </div>
-
-          {/* Line 2: button.style.backgroundColor = 'red'; */}
-          {frame >= TYPE2_START && (
-            <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap", paddingLeft: 64 }}>
-              <div style={{ overflow: "hidden", whiteSpace: "nowrap", width: `${typeLine2}%` }}>
-                <Tok color={SYN.plain}>button.style.</Tok>
-                <Tok color={SYN.method}>backgroundColor</Tok>
-                <Tok color={SYN.punct}> </Tok>
-                <Tok color={SYN.arrow}>=</Tok>
-                <Tok color={SYN.punct}> </Tok>
-                <Tok color={SYN.string}>'red'</Tok>
-                <Tok color={SYN.punct}>;</Tok>
-              </div>
-              {showCursor2 && (
-                <span style={{ color: SYN.cursor, fontWeight: 400, marginLeft: 2 }}>
-                  {cursorChar}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Line 3: }); */}
-          {frame >= TYPE3_START && (
-            <div style={{ display: "flex", alignItems: "center", whiteSpace: "nowrap" }}>
-              <div style={{ overflow: "hidden", whiteSpace: "nowrap", width: `${typeLine3}%` }}>
-                <Tok color={SYN.plain}>{"});"}</Tok>
-              </div>
-              {showCursor3 && (
-                <span style={{ color: SYN.cursor, fontWeight: 400, marginLeft: 2 }}>
-                  {cursorChar}
-                </span>
-              )}
-            </div>
-          )}
-
-        </div>
+      {/* ── Code B — centered under right branch ─────────────────────────── */}
+      <div style={{
+        position:   "absolute",
+        top:        CODE_TOP,
+        left:       STEM_X,
+        width:      CODE_W_B,
+        textAlign:  "center",
+        fontFamily: FONTS.mono,
+        fontSize:   CODE_FONT,
+        lineHeight: `${CODE_LH}px`,
+        whiteSpace: "pre",
+        overflow:   "hidden",
+      }}>
+        {renderTokens(TOKENS_B, charsB)}
+        {charsB > 0 && charsB < flatB.length && (
+          <span style={{ color: COLORS.white, opacity: cursorOn ? 1 : 0 }}>|</span>
+        )}
       </div>
 
     </AbsoluteFill>

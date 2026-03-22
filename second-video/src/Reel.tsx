@@ -1,54 +1,19 @@
 import React from "react";
 import { AbsoluteFill, Audio, Img, Series, staticFile } from "remotion";
-import { Scene01Hook } from "./Scene1";
+import { DURATIONS, TOTAL_FRAMES, COLORS } from "./tokens";
+import { Scene1 } from "./Scene1";
 import { Scene2 } from "./Scene2";
 import { Scene3 } from "./Scene3";
 import { Scene4 } from "./Scene4";
 import { Scene5 } from "./Scene5";
 import { Scene6 } from "./Scene6";
-import { Scene6ctd } from "./Scene6ctd";
-import { Scene7IntroPunch } from "./Scene7Intro";
 import { Scene7 } from "./Scene7";
 import { Scene8 } from "./Scene8";
-import { Scene9 } from "./Scene9";
-import { Scene10 } from "./Scene10";
 
-// ─── Timing (frames @ 30fps) ──────────────────────────────────────────────────
-export const SCENE_DURATIONS = {
-  s01:  4.2 * 30,   // 150f — The Hook (5s to let everything breathe)
-  s02:  3 * 30,   //  90f — It Works
-  s03:  6 * 30,   // 180f — The Problem
-  s04:  4 * 30,   // 120f — The Cost
-  s05:  3 * 30,   //  90f — The Question
-  s06:  1.8 * 30,   // 150f — Event Delegation Intro
-  s06ctd: 2 * 30, //  45f — Event Delegation Continued (gears)
-  s07intro: 2 * 30, // 15f — Intro to The Bubble (short teaser before main bubble scene)
-  s07:  7.8 * 30,   // 230f — The Bubble
-  s08:  6 * 30,   // 180f — The Solution
-  s09:  5 * 30,   // 150f — The Payoff
-  s10:  4.5 * 30,   //  90f — CTA
-} as const;
+export { TOTAL_FRAMES };
 
-export const TOTAL_DURATION = Object.values(SCENE_DURATIONS).reduce(
-  (sum, d) => sum + d,
-  0
-); // 1440f = 48s
-
-// ─── Design Tokens ────────────────────────────────────────────────────────────
-export const COLORS = {
-  accent:     "#00FF94",
-  accentBlue: "#4D9FFF",
-  accentRed:  "#FF4D4D",
-  white:      "#FFFFFF",
-  offWhite:   "#E8E8E8",
-  muted:      "#888888",
-  dark:       "#0A0A0A",
-} as const;
-
-export const FONTS = {
-  mono:    "'JetBrains Mono', 'Fira Code', monospace",
-  display: "'DM Sans', sans-serif",
-} as const;
+// ─── Shared background ────────────────────────────────────────────────────────
+// Sits behind all scenes. Scenes render on top of this inside the Series.
 
 // ─── Shared Background ────────────────────────────────────────────────────────
 export const ReelBackground: React.FC = () => (
@@ -74,80 +39,47 @@ export const ReelBackground: React.FC = () => (
   </AbsoluteFill>
 );
 
-// ─── Placeholder ──────────────────────────────────────────────────────────────
-// const Placeholder: React.FC<{ label: string; color: string }> = ({ label, color }) => (
-//   <AbsoluteFill
-//     style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
-//   >
-//     <div
-//       style={{
-//         fontFamily: FONTS.mono,
-//         fontSize: 36,
-//         color,
-//         border: `2px solid ${color}`,
-//         padding: "24px 40px",
-//         borderRadius: 8,
-//         opacity: 0.5,
-//       }}
-//     >
-//       {label}
-//     </div>
-//   </AbsoluteFill>
-// );
-
 // ─── Main Reel ────────────────────────────────────────────────────────────────
-export const Reel: React.FC = () => (
-  <AbsoluteFill style={{ backgroundColor: "#0D0D0D", overflow: "hidden" }}>
-    <Audio src={staticFile("voiceover.mp3")} />
-    <ReelBackground />
 
+export const Reel: React.FC = () => (
+  <AbsoluteFill style={{ backgroundColor: COLORS.bg, overflow: "hidden", 
+  display: "flex", justifyContent: "center", alignItems: "center" }}>
+    {/* Always-on layers */}
+    <ReelBackground />
+    <Audio src={staticFile("voiceover.mp3")} />
+
+    {/* Scene series */}
     <Series>
-      <Series.Sequence durationInFrames={SCENE_DURATIONS.s01}>
-        <Scene01Hook />
+      <Series.Sequence durationInFrames={DURATIONS.s1}>
+        <Scene1 />
       </Series.Sequence>
 
-      <Series.Sequence durationInFrames={SCENE_DURATIONS.s02}>
+      <Series.Sequence durationInFrames={DURATIONS.s2}>
         <Scene2 />
       </Series.Sequence>
 
-      <Series.Sequence durationInFrames={SCENE_DURATIONS.s03}>
+      <Series.Sequence durationInFrames={DURATIONS.s3}>
         <Scene3 />
       </Series.Sequence>
 
-      <Series.Sequence durationInFrames={SCENE_DURATIONS.s04}>
+      <Series.Sequence durationInFrames={DURATIONS.s4}>
         <Scene4 />
       </Series.Sequence>
 
-      <Series.Sequence durationInFrames={SCENE_DURATIONS.s05}>
+      <Series.Sequence durationInFrames={DURATIONS.s5}>
         <Scene5 />
       </Series.Sequence>
 
-      <Series.Sequence durationInFrames={SCENE_DURATIONS.s06}>
+      <Series.Sequence durationInFrames={DURATIONS.s6}>
         <Scene6 />
       </Series.Sequence>
 
-      <Series.Sequence durationInFrames={SCENE_DURATIONS.s06ctd}>
-        <Scene6ctd />
-      </Series.Sequence>
-
-      <Series.Sequence durationInFrames={SCENE_DURATIONS.s07intro}>
-        <Scene7IntroPunch />
-      </Series.Sequence>
-
-      <Series.Sequence durationInFrames={SCENE_DURATIONS.s07}>
+      <Series.Sequence durationInFrames={DURATIONS.s7}>
         <Scene7 />
       </Series.Sequence>
 
-      <Series.Sequence durationInFrames={SCENE_DURATIONS.s08}>
+      <Series.Sequence durationInFrames={DURATIONS.s8}>
         <Scene8 />
-      </Series.Sequence>
-
-      <Series.Sequence durationInFrames={SCENE_DURATIONS.s09}>
-        <Scene9 />
-      </Series.Sequence>
-
-      <Series.Sequence durationInFrames={SCENE_DURATIONS.s10}>
-        <Scene10 />
       </Series.Sequence>
     </Series>
   </AbsoluteFill>
