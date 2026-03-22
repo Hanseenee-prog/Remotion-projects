@@ -75,7 +75,7 @@ export const DURATIONS = {
   s4: Math.round(5.0 * 30),  // 150f — JS is single-threaded
   s5: Math.round(3.0 * 30),  //  90f — The event loop
   s6: Math.round(5.5 * 30),  // 165f — setTimeout is async
-  s7: Math.round(4.5 * 30),  // 135f — The reveal
+  s7: Math.round(7 * 30),  // 135f — The reveal
   s8: Math.round(2.5 * 30),  //  75f — Follow CTA
 } as const;
 
