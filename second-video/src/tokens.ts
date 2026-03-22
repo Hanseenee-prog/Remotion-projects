@@ -69,7 +69,7 @@ export const FONTS = {
 // ─── Scene durations (frames @ 30 fps) ───────────────────────────────────────
 
 export const DURATIONS = {
-  s1: Math.round(6.8 * 30),  // 135f — Introduce Rocket A & B
+  s1: Math.round(6.5 * 30),  // 135f — Introduce Rocket A & B
   s2: Math.round(4.0 * 30),  // 120f — The question
   s3: Math.round(3.0 * 30),  //  90f — Dramatic launch pause
   s4: Math.round(5.0 * 30),  // 150f — JS is single-threaded
