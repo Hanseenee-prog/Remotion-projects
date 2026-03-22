@@ -508,7 +508,7 @@ export const Scene3: React.FC = () => {
       {huhhOp > 0 && (
         <div style={{
           position:   "absolute",
-          top:        SAFE.top + 60,
+          top:        SAFE.top + 70,
           left:       SAFE.left,
           width:      CANVAS.safeWidth,
           textAlign:  "center",
@@ -518,6 +518,7 @@ export const Scene3: React.FC = () => {
           color:      COLORS.white,
           letterSpacing: "-0.03em",
           opacity:    huhhOp,
+          transform:   "scale(2.0)",
           // Placeholder — swap this text for an emoji/gif later
         }}>
           😳

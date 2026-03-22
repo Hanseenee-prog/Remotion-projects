@@ -382,7 +382,7 @@ export const Scene2: React.FC = () => {
           left: SAFE.left, width: CANVAS.safeWidth,
           textAlign: "center", fontFamily: FONTS.display,
           fontSize: 62, fontWeight: 800, lineHeight: "1.1",
-          color: COLORS.white, letterSpacing: "-0.02em",
+          color: COLORS.keyword, letterSpacing: "-0.02em",
           opacity: qOp,
         }}>
           {Q_TEXT.slice(0, qChars)}
