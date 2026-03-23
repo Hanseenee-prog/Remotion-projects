@@ -67,7 +67,7 @@ const WIN_H    = BAR_H + LINE_H * 2 + 20;
 const WIN_X    = SAFE.left + Math.round((CANVAS.safeWidth - WIN_W) / 2);
 const WIN_Y    = 900;     // vertical position of settled window
 
-const CODE_FONT    = 36;  // px — code inside window
+const CODE_FONT    = 42;  // px — code inside window
 const GUTTER_FONT  = 30;  // px — line numbers
 const FILENAME_FONT = 25; // px — "script.js" in tab
 
@@ -359,7 +359,7 @@ export const Scene2: React.FC = () => {
       <div style={{
         position: "absolute", top: CODE_S1_TOP, left: ARM_LEFT,
         width: STEM_X - ARM_LEFT, textAlign: "center",
-        fontFamily: FONTS.mono, fontSize: 36, lineHeight: "52px",
+        fontFamily: FONTS.mono, fontSize: 40, fontWeight: 600, lineHeight: "52px",
         whiteSpace: "pre", overflow: "hidden",
         opacity: 1 - overlayP,
       }}>
@@ -368,7 +368,7 @@ export const Scene2: React.FC = () => {
       <div style={{
         position: "absolute", top: CODE_S1_TOP, left: STEM_X,
         width: ARM_RIGHT - STEM_X, textAlign: "center",
-        fontFamily: FONTS.mono, fontSize: 36, lineHeight: "52px",
+        fontFamily: FONTS.mono, fontSize: 40, fontWeight: 600, lineHeight: "52px",
         whiteSpace: "pre", overflow: "hidden",
         opacity: 1 - overlayP,
       }}>
@@ -406,7 +406,7 @@ export const Scene2: React.FC = () => {
       {snipAP > 0 && (
         <div style={{
           position: "absolute", top: snipAY, left: snipAX,
-          fontFamily: FONTS.mono, fontSize: 34, lineHeight: "52px",
+          fontFamily: FONTS.mono, fontSize: 40, fontWeight: 600, lineHeight: "52px",
           whiteSpace: "pre",
           opacity: snipAFlyOp * snipExOp,
           pointerEvents: "none",
@@ -419,7 +419,7 @@ export const Scene2: React.FC = () => {
       {snipBP > 0 && (
         <div style={{
           position: "absolute", top: snipBY, left: snipBX,
-          fontFamily: FONTS.mono, fontSize: 34, lineHeight: "52px",
+          fontFamily: FONTS.mono, fontSize: 40, fontWeight: 600, lineHeight: "52px",
           whiteSpace: "pre",
           opacity: snipBFlyOp * snipExOp,
           pointerEvents: "none",
@@ -487,6 +487,7 @@ export const Scene2: React.FC = () => {
               {/* Crossfades in as the flying snippet lands */}
               <div style={{
                 fontFamily: FONTS.mono, fontSize: CODE_FONT,
+                fontWeight: 600,
                 lineHeight: `${LINE_H}px`, whiteSpace: "pre", overflow: "hidden",
                 opacity: line1Op,
               }}>
@@ -503,6 +504,7 @@ export const Scene2: React.FC = () => {
               }}>2</div>
               <div style={{
                 fontFamily: FONTS.mono, fontSize: CODE_FONT,
+                fontWeight: 600,
                 lineHeight: `${LINE_H}px`, whiteSpace: "pre", overflow: "hidden",
                 opacity: line2Op,
               }}>

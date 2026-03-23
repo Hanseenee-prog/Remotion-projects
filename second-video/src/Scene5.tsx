@@ -37,7 +37,7 @@ const WIN_X      = SAFE.left + Math.round((CANVAS.safeWidth - WIN_W) / 2);
 const BAR_H      = 72;
 const LINE_H     = 136;
 const GUTTER_W   = 72;
-const CODE_FONT  = 40;
+const CODE_FONT  = 46;
 const N_LINES    = 5;
 const WIN_BODY_H = LINE_H * N_LINES + 12;
 const WIN_H      = BAR_H + WIN_BODY_H;
@@ -254,6 +254,7 @@ export const Scene5: React.FC = () => {
                 }}>{i + 1}</div>
                 <div style={{
                   fontFamily: FONTS.mono, fontSize: CODE_FONT,
+                  fontWeight: 600,
                   lineHeight: `${LINE_H}px`, whiteSpace: "pre",
                 }}>
                   {renderLine(line)}
@@ -329,6 +330,7 @@ export const Scene5: React.FC = () => {
                 }}>{i + 1}</div>
                 <div style={{
                   fontFamily: FONTS.mono, fontSize: CODE_FONT,
+                  fontWeight: 600,
                   lineHeight: `${LINE_H}px`, whiteSpace: "pre",
                 }}>
                   {renderLine(line)}

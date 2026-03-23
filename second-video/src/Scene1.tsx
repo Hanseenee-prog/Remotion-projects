@@ -84,7 +84,7 @@ const ROCKET_BOT_Y = PAD_TOP_Y;
 
 // Code below arm line — centred under each branch
 const CODE_TOP   = ARM_Y + 32;
-const CODE_FONT  = 36;
+const CODE_FONT  = 40;
 const CODE_LH    = 52;
 // Each code block spans its full branch width, text-align center handles the rest
 const CODE_W_A   = STEM_X - ARM_LEFT;   // 500px
@@ -397,6 +397,7 @@ export const Scene1: React.FC = () => {
         textAlign:  "center",
         fontFamily: FONTS.mono,
         fontSize:   CODE_FONT,
+        fontWeight: 600,
         lineHeight: `${CODE_LH}px`,
         whiteSpace: "pre",
         overflow:   "hidden",
@@ -428,6 +429,7 @@ export const Scene1: React.FC = () => {
         textAlign:  "center",
         fontFamily: FONTS.mono,
         fontSize:   CODE_FONT,
+        fontWeight: 600,
         lineHeight: `${CODE_LH}px`,
         whiteSpace: "pre",
         overflow:   "hidden",

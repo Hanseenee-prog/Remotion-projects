@@ -33,7 +33,7 @@ const WIN_X      = SAFE.left + Math.round((CANVAS.safeWidth - WIN_W) / 2);
 const BAR_H      = 72;
 const LINE_H     = 136;
 const GUTTER_W   = 72;
-const CODE_FONT  = 40;
+const CODE_FONT  = 46;
 const WIN_BODY_H = LINE_H * 5 + 12;
 const WIN_H      = BAR_H + WIN_BODY_H;
 const TITLE_SPACE = 140;
@@ -313,6 +313,7 @@ export const Scene6: React.FC = () => {
             {/* Code */}
             <div style={{
               fontFamily: FONTS.mono, fontSize: cFont,
+              fontWeight: 600,
               lineHeight: `${h}px`, whiteSpace: "pre", position: "relative",
             }}>
               {renderLine(line)}

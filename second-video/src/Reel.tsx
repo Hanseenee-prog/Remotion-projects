@@ -33,7 +33,7 @@ export const ReelBackground: React.FC = () => (
     <AbsoluteFill
       style={{
         background:
-          "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%)",
+          "radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.7) 100%)",
       }}
     />
   </AbsoluteFill>

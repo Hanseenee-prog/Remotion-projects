@@ -61,7 +61,7 @@ const ROCKET_W     = 389;
 const ROCKET_H     = 594;
 const ROCKET_BOT_Y = PAD_TOP_Y;
 const CODE_TOP  = ARM_Y + 32;
-const CODE_FONT = 36;
+const CODE_FONT = 40;
 const CODE_LH   = 52;
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
@@ -585,7 +585,7 @@ export const Scene7: React.FC = () => {
         <div style={{
           position: "absolute", top: CODE_TOP, left: ARM_LEFT,
           width: STEM_X - ARM_LEFT, textAlign: "center",
-          fontFamily: FONTS.mono, fontSize: CODE_FONT, lineHeight: `${CODE_LH}px`,
+          fontFamily: FONTS.mono, fontSize: CODE_FONT, fontWeight: 600, lineHeight: `${CODE_LH}px`,
           whiteSpace: "pre", overflow: "hidden",
         }}>
           <span style={{ color: KW }}>setTimeout</span>
@@ -598,7 +598,7 @@ export const Scene7: React.FC = () => {
         <div style={{
           position: "absolute", top: CODE_TOP, left: STEM_X,
           width: ARM_RIGHT - STEM_X, textAlign: "center",
-          fontFamily: FONTS.mono, fontSize: CODE_FONT, lineHeight: `${CODE_LH}px`,
+          fontFamily: FONTS.mono, fontSize: CODE_FONT, fontWeight: 600, lineHeight: `${CODE_LH}px`,
           whiteSpace: "pre", overflow: "hidden",
         }}>
           <span style={{ color: FN }}>launchB</span>
