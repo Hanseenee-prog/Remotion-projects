@@ -359,7 +359,7 @@ export const Scene2: React.FC = () => {
       <div style={{
         position: "absolute", top: CODE_S1_TOP, left: ARM_LEFT,
         width: STEM_X - ARM_LEFT, textAlign: "center",
-        fontFamily: FONTS.mono, fontSize: 40, fontWeight: 600, lineHeight: "52px",
+        fontFamily: FONTS.mono, fontSize: 38, fontWeight: 600, lineHeight: "52px",
         whiteSpace: "pre", overflow: "hidden",
         opacity: 1 - overlayP,
       }}>
@@ -368,7 +368,7 @@ export const Scene2: React.FC = () => {
       <div style={{
         position: "absolute", top: CODE_S1_TOP, left: STEM_X,
         width: ARM_RIGHT - STEM_X, textAlign: "center",
-        fontFamily: FONTS.mono, fontSize: 40, fontWeight: 600, lineHeight: "52px",
+        fontFamily: FONTS.mono, fontSize: 38, fontWeight: 600, lineHeight: "52px",
         whiteSpace: "pre", overflow: "hidden",
         opacity: 1 - overlayP,
       }}>

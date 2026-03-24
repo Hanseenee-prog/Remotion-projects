@@ -61,7 +61,7 @@ const ROCKET_H     = 594;
 const ROCKET_BOT_Y = PAD_TOP_Y;
 
 const CODE_TOP  = ARM_Y + 32;
-const CODE_FONT = 40;
+const CODE_FONT = 38;
 const CODE_LH   = 52;
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
