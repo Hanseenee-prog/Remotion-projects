@@ -5,7 +5,7 @@ import { Reel, TOTAL_FRAMES } from "./Reel";
 export const RemotionRoot: React.FC = () => {
   return (
     <Composition
-      id="RocketReel"
+      id="AnimationReel"
       component={Reel}
       durationInFrames={TOTAL_FRAMES}
       fps={30}
