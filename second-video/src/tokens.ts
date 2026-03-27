@@ -74,7 +74,7 @@ export const FONTS = {
 
 export const DURATIONS = {
   s1: Math.round(7.9 * 30),  // 150f — Card pops in broken, "it just pops in"
-  s2: Math.round(3.5 * 30),  // 105f — "CSS animates between states"
+  s2: Math.round(5.2 * 30),  // 180f — "CSS animates between states"
   s3: Math.round(4.0 * 30),  // 120f — "discrete values, display none→block"
   s4: Math.round(2.5 * 30),  //  75f — "So your animation never runs"
   s5: Math.round(5.0 * 30),  // 150f — "@starting-style" reveal

@@ -1,284 +1,220 @@
-// Scene 2 — "Here's why. CSS animates between states — a before and an after."
-//
-// Visual: Two state boxes connected by an arrow — "before" and "after".
-// A line animates across the arrow to illustrate the in-between.
+// Scene 2 — Refined Layout
+// Total duration: 155 frames
 
 import React from "react";
 import {
   AbsoluteFill,
   useCurrentFrame,
   interpolate,
+  spring,
+  useVideoConfig,
 } from "remotion";
-import { COLORS, FONTS, SAFE, CANVAS } from "./tokens";
+import { COLORS, FONTS } from "./tokens";
 
-const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+// ─── Constants ────────────────────────────────────────────────────────────────
+const RED_ACCENT = "#FF5F57"; // Vibrant Red
+const VIBRANT_BLUE = "#38BDF8"; // Punchy Sky Blue
 
-function fadeUp(frame: number, startFrame: number, duration = 18, distance = 28) {
-  const t = Math.min(Math.max((frame - startFrame) / duration, 0), 1);
-  const e = easeOut(t);
-  return {
-    opacity: e,
-    transform: `translateY(${(1 - e) * distance}px)`,
-  };
-}
-
-function useTyped(text: string, startFrame: number, cps = 38, frame: number) {
-  const chars = Math.max(0, Math.floor(((frame - startFrame) / 30) * cps));
-  return text.slice(0, chars);
-}
-
-// ─── State Box ────────────────────────────────────────────────────────────────
-const StateBox: React.FC<{
+// ─── State Card Component ─────────────────────────────────────────────────────
+const StateCard: React.FC<{
   label: string;
   sublabel: string;
   accent: string;
-  style?: React.CSSProperties;
-}> = ({ label, sublabel, accent, style }) => (
-  <div
-    style={{
-      width: 280,
-      padding: "36px 32px",
-      borderRadius: 18,
-      background: "rgba(255,255,255,0.05)",
-      border: `1.5px solid ${accent}44`,
-      boxShadow: `0 0 40px ${accent}18`,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      gap: 10,
-      ...style,
-    }}
-  >
-    <span
+  showText: boolean;
+  zIndex?: number;
+}> = ({ label, sublabel, accent, showText, zIndex = 10 }) => (
+  <div style={{ 
+    display: "flex", 
+    flexDirection: "column", 
+    alignItems: "center",
+    zIndex // Higher zIndex keeps cards above the line
+  }}>
+    <div
       style={{
+        width: 220,
+        height: 280,
+        borderRadius: 20,
+        background: COLORS.codeBg,
+        border: `3px solid ${accent}`,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        boxShadow: `0 24px 48px rgba(0,0,0,0.5)`,
+        position: "relative",
+      }}
+    >
+      <div style={{
+        opacity: showText ? 1 : 0,
         fontFamily: FONTS.mono,
-        fontSize: 22,
-        color: COLORS.comment,
-        letterSpacing: "0.06em",
-        textTransform: "uppercase",
-      }}
-    >
-      {sublabel}
-    </span>
-    <span
-      style={{
-        fontFamily: FONTS.display,
-        fontSize: 36,
+        fontSize: 32,
         fontWeight: 700,
-        color: accent,
-        letterSpacing: "-0.01em",
-      }}
-    >
-      {label}
-    </span>
+        color: COLORS.offWhite,
+        transition: "opacity 0.3s ease",
+      }}>
+        {label}
+      </div>
+    </div>
+
+    <div style={{
+      opacity: showText ? 1 : 0,
+      marginTop: 24,
+      fontFamily: FONTS.mono,
+      fontSize: 28,
+      fontWeight: 800,
+      color: accent,
+      textTransform: "uppercase",
+      letterSpacing: "0.1em",
+      transition: "opacity 0.3s ease",
+    }}>
+      {sublabel}
+    </div>
   </div>
 );
 
-// ─── Animated Arrow ───────────────────────────────────────────────────────────
-const AnimatedArrow: React.FC<{ progress: number }> = ({ progress }) => {
-  const lineW = 220;
-  const filled = progress * lineW;
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0,
-        position: "relative",
-        width: lineW + 24,
-      }}
-    >
-      {/* Track */}
-      <div
-        style={{
-          width: lineW,
-          height: 3,
-          background: "rgba(255,255,255,0.1)",
-          borderRadius: 2,
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {/* Fill */}
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: filled,
-            height: "100%",
-            background: `linear-gradient(90deg, ${COLORS.accentA}, ${COLORS.accentB})`,
-            borderRadius: 2,
-            transition: "none",
-          }}
-        />
-      </div>
-      {/* Arrow head */}
-      <div
-        style={{
-          width: 0,
-          height: 0,
-          borderTop: "9px solid transparent",
-          borderBottom: "9px solid transparent",
-          borderLeft: `14px solid ${progress > 0.95 ? COLORS.accentB : "rgba(255,255,255,0.15)"}`,
-          transition: "border-left-color 0.2s",
-        }}
-      />
-    </div>
-  );
-};
-
-// ─── Dot that travels along the arrow ─────────────────────────────────────────
-const TravelDot: React.FC<{ progress: number }> = ({ progress }) => {
-  if (progress <= 0.01 || progress >= 0.99) return null;
-  const lineW = 220;
-  const x = progress * lineW;
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: x - 9,
-        top: "50%",
-        transform: "translateY(-50%)",
-        width: 18,
-        height: 18,
-        borderRadius: "50%",
-        background: `linear-gradient(135deg, ${COLORS.accentA}, ${COLORS.accentB})`,
-        boxShadow: `0 0 16px ${COLORS.accentA}88`,
-      }}
-    />
-  );
-};
-
-// ─── Scene ────────────────────────────────────────────────────────────────────
 export const Scene2: React.FC = () => {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
 
-  const headline1 = "Here's why.";
-  const headline2 = "CSS animates between";
-  const headline3 = "states —";
-
-  const sub1 = "a before and an after.";
-
-  const th1 = useTyped(headline1, 0, 40, frame);
-  const th2 = useTyped(headline2, 18, 40, frame);
-  const th3 = useTyped(headline3, 36, 40, frame);
-  const ts1 = useTyped(sub1, 52, 40, frame);
-
-  // State boxes appear
-  const beforeBoxStyle = fadeUp(frame, 40, 20);
-  const afterBoxStyle = fadeUp(frame, 52, 20);
-  const arrowStyle = fadeUp(frame, 46, 16);
-
-  // Arrow fill progress: travels from 0→1 between frame 60 and frame 90
-  const arrowProgress = interpolate(frame, [60, 90], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
+  // 1. Entrances
+  const boxesPop = spring({
+    frame,
+    fps,
+    config: { damping: 12, stiffness: 150 },
   });
 
-  // "in-between" label
-  const inBetweenStyle = fadeUp(frame, 78, 16);
+  // 2. Spread Logic (Reduced from 380 to 290 for a tighter look)
+  const moveApart = spring({
+    frame: frame - 30,
+    fps,
+    config: { damping: 20, stiffness: 80 },
+  });
+  const spread = interpolate(moveApart, [0, 1], [0, 330]); 
+
+  // 3. Line Visibility (Fades in as they move apart)
+  const lineOpacity = interpolate(frame, [35, 50], [0, 0.6], { extrapolateRight: "clamp" });
+  const lineScale = interpolate(frame, [40, 70], [0, 1], { extrapolateRight: "clamp" });
+
+  // 4. Content Timings
+  const textVisible = frame > 85;
+  const calloutIn = spring({ frame: frame - 40, fps });
+
+
+  // 5. In-between callout appears (40-60)
+  const calloutOpacity = interpolate(frame, [40, 60], [0, 1], { extrapolateRight: "clamp" });
+  const calloutY = interpolate(frame, [40, 60], [20, 0], { extrapolateRight: "clamp" });
+
+  // 5. Global Exit
+  const exitOpacity = interpolate(frame, [150, 155], [1, 0], { extrapolateLeft: "clamp" });
+
+  const dotValues = [
+    { val: "0.25", pos: -0.4, delay: 65 },
+    { val: "0.50", pos: 0, delay: 70 },
+    { val: "0.75", pos: 0.4, delay: 75 },
+  ];
 
   return (
-    <AbsoluteFill
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        paddingTop: SAFE.top + 80,
-        paddingLeft: SAFE.left + 20,
-        paddingRight: SAFE.right + 20,
-      }}
-    >
-      {/* ── Headline ─────────────────────────────────────────── */}
-      <div style={{ width: "100%", maxWidth: CANVAS.safeWidth, marginBottom: 70 }}>
-        {[
-          { text: th1, start: 0, dim: false },
-          { text: th2, start: 10, dim: false },
-          { text: th3, start: 24, dim: false },
-        ].map(({ text, start, dim }, i) => (
-          <div
-            key={i}
-            style={{
-              ...fadeUp(frame, start, 16),
-              fontFamily: FONTS.display,
-              fontSize: 68,
-              fontWeight: 800,
-              color: COLORS.white,
-              lineHeight: 1.15,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {text}
-          </div>
-        ))}
-        <div
-          style={{
-            ...fadeUp(frame, 46, 16),
-            fontFamily: FONTS.display,
-            fontSize: 56,
-            fontWeight: 600,
-            color: COLORS.muted,
-            lineHeight: 1.2,
-            letterSpacing: "-0.01em",
-            marginTop: 4,
-          }}
-        >
-          {ts1}
-        </div>
-      </div>
+    <AbsoluteFill style={{
+      background: "transparent",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      opacity: exitOpacity,
+    }}>
+      
+      {/* ── Visual Timeline Area ── */}
+      <div style={{ 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "center", 
+        position: "relative", 
+        width: "100%",
+        height: 400 
+      }}>
+        
+        {/* The Horizontal Line (Centered vertically behind cards) */}
+        <div style={{ 
+          position: "absolute", 
+          width: spread * 2,
+          height: 8, 
+          background: "white",
+          opacity: lineOpacity,
+          transform: `scaleX(${lineScale})`,
+          transformOrigin: "center",
+          zIndex: 1, // Lower than cards
+          borderRadius: 4,
+          top: 165, // Calculated to be at the vertical center of the 280px tall cards
+        }} />
 
-      {/* ── State diagram ────────────────────────────────────── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 0,
-          marginTop: 20,
-        }}
-      >
-        <div style={beforeBoxStyle}>
-          <StateBox
-            label="opacity: 0"
-            sublabel="before"
-            accent={COLORS.accentC}
+        {/* Left Box: Before (Red Theme) */}
+        <div style={{ position: "absolute", transform: `translateX(${-spread}px) scale(${boxesPop})`, zIndex: 10 }}>
+          <StateCard 
+            label="opacity: 0" 
+            sublabel="before" 
+            accent={RED_ACCENT} 
+            showText={textVisible}
           />
         </div>
 
-        {/* Arrow zone */}
-        <div
-          style={{
-            ...arrowStyle,
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-            height: 60,
-            marginTop: 0,
-          }}
-        >
-          <AnimatedArrow progress={arrowProgress} />
-          <TravelDot progress={arrowProgress} />
-        </div>
+        {/* Intermediate Dots (Vibrant Blue, No subtext) */}
+        {dotValues.map((d) => {
+          const pop = spring({
+            frame: frame - d.delay,
+            fps,
+            config: { stiffness: 200, damping: 12 },
+          });
 
-        <div style={afterBoxStyle}>
-          <StateBox
-            label="opacity: 1"
-            sublabel="after"
-            accent={COLORS.accentA}
+          return (
+            <div key={d.val} style={{ 
+              position: "absolute", 
+              transform: `translateX(${spread * d.pos}px) scale(${pop})`,
+              display: "flex", 
+              flexDirection: "column", 
+              alignItems: "center",
+              zIndex: 5,
+              top: 165, // Aligned with the line
+              marginTop: -12, // Offset half the dot size to center on line
+            }}>
+              {/* Value Number Only */}
+              <div style={{ 
+                position: "absolute", 
+                bottom: 40,
+                fontSize: 34, 
+                fontWeight: 800, 
+                color: VIBRANT_BLUE, 
+                fontFamily: FONTS.mono 
+              }}>
+                {d.val}
+              </div>
+              
+              {/* Larger Blue Dot */}
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: VIBRANT_BLUE }} />
+            </div>
+          );
+        })}
+
+        {/* Right Box: After (Green Theme) */}
+        <div style={{ position: "absolute", transform: `translateX(${spread}px) scale(${boxesPop})`, zIndex: 10 }}>
+          <StateCard 
+            label="opacity: 1" 
+            sublabel="after" 
+            accent={COLORS.selector} 
+            showText={textVisible}
           />
         </div>
+
       </div>
 
-      {/* ── "in-between" callout ────────────────────────────── */}
+      {/* ── "in-between" Callout ── */}
       <div
         style={{
-          ...inBetweenStyle,
-          marginTop: 40,
+          marginTop: 60,
           padding: "16px 36px",
           borderRadius: 100,
           background: "rgba(126,231,135,0.08)",
           border: `1px solid ${COLORS.accentA}33`,
+          opacity: calloutOpacity,
+          transform: `translateY(${calloutY}px)`,
         }}
       >
         <span
@@ -290,9 +226,10 @@ export const Scene2: React.FC = () => {
             letterSpacing: "0.02em",
           }}
         >
-          CSS needs an in-between to animate
+          CSS animates between states
         </span>
       </div>
+
     </AbsoluteFill>
   );
 };
