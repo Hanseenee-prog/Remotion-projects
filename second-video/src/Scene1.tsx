@@ -650,12 +650,12 @@ export const Scene1: React.FC = () => {
               </h2>
             </div>
 
-            <p style={{ fontSize: 21, color: "rgba(255,255,255,0.75)", lineHeight: 1.6, marginBottom: 28, marginTop: 0 }}>
+            <p style={{ fontSize: 27, color: "rgba(255,255,255,0.75)", lineHeight: 1.6, marginBottom: 28, marginTop: 0 }}>
               Learn to bridge the gap between none and block states for smooth transitions.
             </p>
 
             <div style={{ display: "flex" }}>
-              <div style={{ background: "rgba(255,255,255,0.1)", padding: "10px 18px", borderRadius: 8, fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ background: "rgba(255,255,255,0.1)", padding: "10px 18px", borderRadius: 8, fontSize: 19, fontWeight: 600, display: "flex", alignItems: "center", gap: 8 }}>
                 ✨ <span>CSS Tricks</span>
               </div>
             </div>
