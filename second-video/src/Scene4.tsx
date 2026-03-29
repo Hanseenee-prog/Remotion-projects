@@ -1,296 +1,319 @@
-// Scene 4 — "So your animation never runs."
+// Scene 4 — "Two properties change that."
 //
-// Visual: A CSS animation keyframe block types in, then a big ❌ / strikethrough
-// overlay appears — the animation is crossed out. Dramatic, punchy.
+// Timeline (30fps):
+//   0–12   : Both cards start stacked at center (scale 0 → 1, spring pop)
+//   12–40  : Cards fan open — left rotates to -28°, right to +28°
+//             pivot is bottom-center of both cards (they share the axis)
+//   45–70  : Sentence "Two properties change that." fades + slides up, word by word
+//   70–120 : Hold — everything visible
+//
+// The "handfan" mechanic:
+//   Both cards sit in a wrapper whose transform-origin is "bottom center".
+//   Left card rotates negative degrees, right card positive.
+//   The bottom edges stay kissing at the same point — the pivot.
 
 import React from "react";
 import {
   AbsoluteFill,
   useCurrentFrame,
+  useVideoConfig,
   interpolate,
+  spring,
 } from "remotion";
-import { COLORS, FONTS, SAFE, CANVAS } from "./tokens";
+import { COLORS, FONTS } from "./tokens";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function clamp(v: number, lo = 0, hi = 1) {
+  return Math.min(Math.max(v, lo), hi);
+}
+function prog(frame: number, start: number, end: number) {
+  return clamp((frame - start) / (end - start));
+}
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+const easeOutBack = (t: number) => {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+};
 
-function fadeUp(frame: number, startFrame: number, duration = 18, distance = 28) {
-  const t = Math.min(Math.max((frame - startFrame) / duration, 0), 1);
-  const e = easeOut(t);
-  return { opacity: e, transform: `translateY(${(1 - e) * distance}px)` };
-}
+// ─── Card dimensions ──────────────────────────────────────────────────────────
 
-function useTyped(text: string, startFrame: number, cps = 38, frame: number) {
-  const chars = Math.max(0, Math.floor(((frame - startFrame) / 30) * cps));
-  return text.slice(0, chars);
-}
+const CARD_W = 520;
+const CARD_H = 520;
+const BORDER_R = 36;
 
-const T: React.FC<{ children: React.ReactNode; color?: string }> = ({
-  children,
-  color = COLORS.codeText,
-}) => <span style={{ color, fontFamily: FONTS.mono, whiteSpace: "pre" }}>{children}</span>;
+// How far each card fans out (degrees)
+const FAN_DEG = 27;
 
-// ─── Code block lines ─────────────────────────────────────────────────────────
-const CODE_LINES: Array<{ tokens: Array<{ text: string; color: string }>; indent: number }> = [
-  {
-    indent: 0,
-    tokens: [
-      { text: ".card", color: COLORS.selector },
-      { text: " {", color: COLORS.punctuation },
-    ],
-  },
-  {
-    indent: 1,
-    tokens: [
-      { text: "display", color: COLORS.property },
-      { text: ": ", color: COLORS.punctuation },
-      { text: "none", color: COLORS.keyword },
-      { text: ";", color: COLORS.punctuation },
-    ],
-  },
-  {
-    indent: 1,
-    tokens: [
-      { text: "animation", color: COLORS.property },
-      { text: ": ", color: COLORS.punctuation },
-      { text: "fadeIn", color: COLORS.value },
-      { text: " 0.4s", color: COLORS.number },
-      { text: " ease", color: COLORS.value },
-      { text: ";", color: COLORS.punctuation },
-    ],
-  },
-  {
-    indent: 0,
-    tokens: [{ text: "}", color: COLORS.punctuation }],
-  },
-  {
-    indent: 0,
-    tokens: [{ text: "", color: "" }],
-  },
-  {
-    indent: 0,
-    tokens: [
-      { text: ".card.visible", color: COLORS.selector },
-      { text: " {", color: COLORS.punctuation },
-    ],
-  },
-  {
-    indent: 1,
-    tokens: [
-      { text: "display", color: COLORS.property },
-      { text: ": ", color: COLORS.punctuation },
-      { text: "block", color: COLORS.value },
-      { text: ";", color: COLORS.punctuation },
-    ],
-  },
-  {
-    indent: 0,
-    tokens: [{ text: "}", color: COLORS.punctuation }],
-  },
-];
+// ─── Single fan card ──────────────────────────────────────────────────────────
+// The wrapper's transform-origin is bottom-center (bottom of the card).
+// Rotating the wrapper around that point = handfan open.
 
-export const Scene4: React.FC = () => {
-  const frame = useCurrentFrame();
-
-  const headline = "So your animation";
-  const headline2 = "never runs.";
-  const th1 = useTyped(headline, 0, 42, frame);
-  const th2 = useTyped(headline2, 14, 42, frame);
-
-  // Code block types in starting at frame 20
-  // Each line = 8 frames apart
-  const CHARS_PER_SEC = 80;
-  const getCodeProgress = (lineIdx: number) => {
-    const lineStart = 20 + lineIdx * 7;
-    const lineText = CODE_LINES[lineIdx].tokens.map((t) => t.text).join("");
-    const chars = Math.max(0, Math.floor(((frame - lineStart) / 30) * CHARS_PER_SEC));
-    return Math.min(chars, lineText.length);
-  };
-
-  // Strikethrough line sweeps across at frame 54
-  const strikeProgress = interpolate(frame, [54, 64], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // "never runs" big label
-  const neverRunsStyle = {
-    opacity: interpolate(frame, [58, 68], [0, 1], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    }),
-    transform: `scale(${interpolate(frame, [58, 68], [0.8, 1], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    })})`,
-  };
+const FanCard: React.FC<{
+  side: "left" | "right";
+  rotationDeg: number;    // current rotation in degrees
+  popScale: number;       // 0 → 1 entrance pop
+  accentColor: string;
+  number: string;
+  propertyText: string;   // the blurred CSS property name
+  blurAmount: number;     // px blur on the property text
+}> = ({ side, rotationDeg, popScale, accentColor, number, propertyText, blurAmount }) => {
+  const isLeft = side === "left";
 
   return (
-    <AbsoluteFill
+    // Outer wrapper: handles rotation around bottom-center
+    <div
       style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        paddingTop: SAFE.top + 80,
-        paddingLeft: SAFE.left + 20,
-        paddingRight: SAFE.right + 20,
+        position: "absolute",
+        // Both cards pivot from the same bottom-center point.
+        // We offset left/right by half card width so their inner bottom
+        // corners meet at the pivot.
+        left: isLeft ? -CARD_W : 0,
+        bottom: 0,
+        width: CARD_W,
+        height: CARD_H,
+        transformOrigin: isLeft ? "bottom right" : "bottom left",
+        transform: `rotate(${rotationDeg}deg) scale(${popScale})`,
+        willChange: "transform",
+        zIndex: isLeft ? 1 : 2,
       }}
     >
-      {/* ── Headline ─────────────────────────────────────────── */}
-      <div style={{ width: "100%", maxWidth: CANVAS.safeWidth, marginBottom: 52 }}>
-        {[
-          { text: th1, start: 0 },
-          { text: th2, start: 10 },
-        ].map(({ text, start }, i) => (
-          <div
-            key={i}
-            style={{
-              ...fadeUp(frame, start, 16),
-              fontFamily: FONTS.display,
-              fontSize: 72,
-              fontWeight: 800,
-              color: i === 1 ? COLORS.accentC : COLORS.white,
-              lineHeight: 1.15,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {text}
-          </div>
-        ))}
-      </div>
-
-      {/* ── Code block ───────────────────────────────────────── */}
+      {/* Card face */}
       <div
         style={{
-          ...fadeUp(frame, 16, 16),
-          width: "100%",
-          maxWidth: CANVAS.safeWidth,
-          borderRadius: 20,
+          width: CARD_W,
+          height: CARD_H,
+          borderRadius: BORDER_R,
           background: COLORS.codeBg,
-          border: "1.5px solid rgba(255,255,255,0.08)",
+          border: `5px solid ${accentColor}`,
+          boxShadow: `0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px ${accentColor}22`,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 28,
           overflow: "hidden",
           position: "relative",
         }}
       >
-        {/* Editor header */}
-        <div
-          style={{
-            padding: "14px 20px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          {[COLORS.accentC, "#F0C674", COLORS.accentA].map((c, i) => (
-            <div
-              key={i}
-              style={{ width: 12, height: 12, borderRadius: "50%", background: c, opacity: 0.7 }}
-            />
-          ))}
-          <span
-            style={{
-              fontFamily: FONTS.mono,
-              fontSize: 18,
-              color: COLORS.comment,
-              marginLeft: 8,
-            }}
-          >
-            styles.css
-          </span>
-        </div>
-
-        {/* Code lines */}
-        <div style={{ padding: "24px 28px", fontFamily: FONTS.mono, fontSize: 24, lineHeight: 1.8 }}>
-          {CODE_LINES.map((line, lineIdx) => {
-            const lineText = line.tokens.map((t) => t.text).join("");
-            const progress = getCodeProgress(lineIdx);
-            let charsLeft = progress;
-            return (
-              <div key={lineIdx} style={{ paddingLeft: line.indent * 28 }}>
-                {line.tokens.map((token, ti) => {
-                  if (charsLeft <= 0) return null;
-                  const show = token.text.slice(0, charsLeft);
-                  charsLeft -= token.text.length;
-                  return (
-                    <T key={ti} color={token.color}>
-                      {show}
-                    </T>
-                  );
-                })}
-              </div>
-            );
-          })}
-
-          {/* Typing cursor */}
-          {frame < 54 && (
-            <span
-              style={{
-                display: "inline-block",
-                width: 3,
-                height: "0.85em",
-                background: COLORS.accentA,
-                marginLeft: 2,
-                verticalAlign: "middle",
-                opacity: Math.floor(frame / 7) % 2 === 0 ? 1 : 0,
-              }}
-            />
-          )}
-        </div>
-
-        {/* Strikethrough overlay */}
-        {strikeProgress > 0 && (
-          <div
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: 0,
-              width: `${strikeProgress * 100}%`,
-              height: 4,
-              background: COLORS.accentC,
-              boxShadow: `0 0 16px ${COLORS.accentC}88`,
-              transform: "translateY(-50%)",
-            }}
-          />
-        )}
-
-        {/* Red tint overlay */}
+        {/* Subtle accent glow behind number */}
         <div
           style={{
             position: "absolute",
-            inset: 0,
-            background: `rgba(255,123,114,${strikeProgress * 0.08})`,
-            pointerEvents: "none",
+            width: 260,
+            height: 260,
+            borderRadius: "50%",
+            background: accentColor,
+            opacity: 0.06,
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -65%)",
+          }}
+        />
+
+        {/* Number */}
+        <div
+          style={{
+            fontFamily: FONTS.mono,
+            fontSize: 180,
+            fontWeight: 800,
+            color: accentColor,
+            lineHeight: 1,
+            letterSpacing: "-0.04em",
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          {number}
+        </div>
+
+        {/* Property — blurred */}
+        <div
+          style={{
+            fontFamily: FONTS.mono,
+            fontSize: 36,
+            fontWeight: 700,
+            color: COLORS.codeText,
+            textAlign: "center",
+            lineHeight: 1.5,
+            padding: "0 40px",
+            filter: `blur(${blurAmount}px)`,
+            opacity: 0.75,
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          {propertyText}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Word-by-word sentence ────────────────────────────────────────────────────
+
+const SentenceWord: React.FC<{
+  word: string;
+  frame: number;
+  startFrame: number;
+  color?: string;
+}> = ({ word, frame, startFrame, color }) => {
+  const p = prog(frame, startFrame, startFrame + 14);
+  const e = easeOutBack(p);
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        opacity: clamp(p * 3),
+        transform: `translateY(${interpolate(easeOut(p), [0, 1], [40, 0])}px) scale(${interpolate(e, [0, 1], [0.85, 1])})`,
+        color: color ?? COLORS.white,
+        marginRight: 24,
+        willChange: "transform, opacity",
+      }}
+    >
+      {word}
+    </span>
+  );
+};
+
+// ─── Scene ────────────────────────────────────────────────────────────────────
+
+export const Scene4: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  // ── Cards pop in (frame 0–12) ─────────────────────────────────────────────
+  const popSpring = spring({
+    fps,
+    frame,
+    config: { damping: 12, stiffness: 200, mass: 0.7 },
+    durationInFrames: 16,
+  });
+  const popScale = interpolate(popSpring, [0, 1], [0, 1]);
+
+  // ── Fan open (frame 12–42) ────────────────────────────────────────────────
+  const fanSpring = spring({
+    fps,
+    frame: Math.max(0, frame - 12),
+    config: { damping: 14, stiffness: 100, mass: 1.0 },
+    durationInFrames: 36,
+  });
+  const fanDeg = interpolate(fanSpring, [0, 1], [0, FAN_DEG]);
+
+  // ── Blur dissolves as fan opens (reveal the text gradually) ──────────────
+  // Blur goes from 8px → 3.5px as fan opens, stays blurred but legible-ish
+  const blurAmount = interpolate(fanSpring, [0, 1], [8, 3.5]);
+
+  // ── Sentence words stagger in (frame 45 onward) ───────────────────────────
+  // "Two"(45) "properties"(52) "change"(59) "that."(66)
+  const sentenceWords: { word: string; start: number; color?: string }[] = [
+    { word: "Two",         start: 45, color: COLORS.accentA  },
+    { word: "properties", start: 52                          },
+    { word: "change",     start: 59                          },
+    { word: "that.",      start: 66                          },
+  ];
+
+  // ── Pivot dot pulse ───────────────────────────────────────────────────────
+  const dotScale = spring({
+    fps,
+    frame: Math.max(0, frame - 8),
+    config: { damping: 10, stiffness: 200 },
+    durationInFrames: 12,
+  });
+
+  return (
+    <AbsoluteFill
+      style={{
+        background: "transparent",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      {/* ── Fan pivot area ─────────────────────────────────────────────── */}
+      {/* This container is the anchor point. Cards extend upward from here. */}
+      <div
+        style={{
+          position: "relative",
+          width: CARD_W * 2,  // enough room for both rotated cards
+          height: CARD_H + 40,
+          marginBottom: 80,
+        }}
+      >
+        {/* Shared pivot origin sits at horizontal center, vertical bottom */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: "50%",
+            height: CARD_H,
+            width: 0,
+          }}
+        >
+          {/* Left card — rotates negative (counter-clockwise) */}
+          <FanCard
+            side="left"
+            rotationDeg={-fanDeg}
+            popScale={popScale}
+            accentColor={COLORS.accentC}   // red — #FF7B72
+            number="1"
+            propertyText="@starting-style"
+            blurAmount={blurAmount}
+          />
+
+          {/* Right card — rotates positive (clockwise) */}
+          <FanCard
+            side="right"
+            rotationDeg={fanDeg}
+            popScale={popScale}
+            accentColor={COLORS.accentA}   // green — #7EE787
+            number="2"
+            propertyText={`transition-behavior:\nallow-discrete`}
+            blurAmount={blurAmount}
+          />
+        </div>
+
+        {/* Pivot dot — tiny indicator where the cards hinge */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: -6,
+            left: "50%",
+            transform: `translate(-50%, 0) scale(${dotScale})`,
+            width: 20,
+            height: 20,
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.20)",
+            border: "1.5px solid rgba(255,255,255,0.35)",
+            zIndex: 10,
           }}
         />
       </div>
 
-      {/* ── "Animation never runs" badge ─────────────────────── */}
+      {/* ── "Two properties change that." ──────────────────────────────── */}
       <div
         style={{
-          ...neverRunsStyle,
-          marginTop: 40,
           display: "flex",
           alignItems: "center",
-          gap: 14,
-          padding: "18px 40px",
-          borderRadius: 100,
-          background: "rgba(255,123,114,0.12)",
-          border: `1.5px solid ${COLORS.accentC}66`,
-          boxShadow: `0 0 40px ${COLORS.accentC}22`,
+          justifyContent: "center",
+          flexWrap: "nowrap",
+          fontFamily: FONTS.display,
+          fontSize: 72,
+          fontWeight: 800,
+          letterSpacing: "-0.025em",
+          lineHeight: 1.1,
         }}
       >
-        <span style={{ fontSize: 32 }}>❌</span>
-        <span
-          style={{
-            fontFamily: FONTS.display,
-            fontSize: 28,
-            fontWeight: 700,
-            color: COLORS.accentC,
-            letterSpacing: "0.02em",
-          }}
-        >
-          animation never runs
-        </span>
+        {sentenceWords.map(({ word, start, color }) => (
+          <SentenceWord
+            key={word}
+            word={word}
+            frame={frame}
+            startFrame={start}
+            color={color}
+          />
+        ))}
       </div>
     </AbsoluteFill>
   );

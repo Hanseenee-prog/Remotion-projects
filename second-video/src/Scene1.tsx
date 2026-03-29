@@ -81,12 +81,12 @@ function tc(type: TT): string {
 const CODE_FONT_SIZE = 40;
 const CODE_LINE_HEIGHT = 2.00;
 
-const CodeLine: React.FC<{
-  tokens: Token[];
-  typedChars?: number;
-  showCursor?: boolean;
-  cursorBlink?: boolean;
-}> = ({ tokens, typedChars, showCursor = false, cursorBlink = false }) => {
+const CodeLine: React.FC<{ tokens: Token[]; typedChars?: number; showCursor?: boolean; cursorBlink?: boolean }> = ({
+  tokens,
+  typedChars,
+  showCursor = false,
+  cursorBlink = false,
+}) => {
   const isTyping = typedChars !== undefined;
 
   let rendered: React.ReactNode[];
@@ -276,12 +276,6 @@ const JS_LINE_CLOSE: Token[] = [
 ];
 
 // ─── New CSS window token definitions (frame 175+) ────────────────────────────
-// .card {
-//   display: none;
-//   opacity: 0;
-//   transition: opacity 0.4s ease;
-// }
-
 const CSS2_SELECTOR: Token[] = [
   { text: ".card", type: "selector" },
   { text: " {",    type: "punctuation" },
@@ -314,9 +308,6 @@ const CSS2_CLOSE: Token[] = [
   { text: "}", type: "punctuation" },
 ];
 
-// Full text of the transition line (for highlight width calc)
-const TRANSITION_LINE_TEXT = "  transition: opacity 0.4s ease;";
-
 // ─── Scene ────────────────────────────────────────────────────────────────────
 export const Scene1: React.FC = () => {
   const frame = useCurrentFrame();
@@ -347,7 +338,6 @@ export const Scene1: React.FC = () => {
     config: { damping: 14, stiffness: 120, mass: 0.8 },
   });
 
-  // Combine Window A movements
   let winAOffset = frame >= 55 ? interpolate(moveUpSpring, [0, 1], [0, -270]) : 0;
   if (frame >= 90) {
     winAOffset = interpolate(exitASpring, [0, 1], [-270, -1500]);
@@ -371,7 +361,6 @@ export const Scene1: React.FC = () => {
   const winBVisible  = frame >= 65;
   const winBRestY    = 270;
 
-  // Combine Window B movements
   let winBOffset = winBVisible
     ? interpolate(slideBSpring, [0, 1], [winBRestY + 280, winBRestY])
     : winBRestY + 280;
@@ -398,34 +387,48 @@ export const Scene1: React.FC = () => {
   });
 
   // ── Cursor Movement & Click (frame 100-112)
-  // Replaced imperative blocks with fully declarative, clamped interpolations 
-  // to guarantee exact frame behavior and eliminate glitches.
-  
-  const cursorMoveP = interpolate(frame, [100, 108], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  
+  //
+  // Cursor is now an independent AbsoluteFill-level element.
+  // Coordinates are in canvas space (1080×1920).
+  // Button sits at top:40% ≈ y=768, horizontally centered at x=540.
+  // Rest position: just above button center (finger tip points down).
+  const CURSOR_REST_X = 490;   // a little left of center so finger tip hits button
+  const CURSOR_REST_Y = 690;   // above the button top edge
+  const CURSOR_START_X = 900;  // comes in from bottom-right
+  const CURSOR_START_Y = 1400;
+
+  const cursorMoveP = clamp((frame - 100) / (108 - 100));
   const cursorEased = easeOut(cursorMoveP);
-  const cursorX = interpolate(cursorEased, [0, 1], [560, 20]);
-  const cursorY = interpolate(cursorEased, [0, 1], [560, 20]);
-  
+
+  // Hard-lock at rest once arrived — no easing overshoot possible
+  const cursorX = frame >= 108
+    ? CURSOR_REST_X
+    : CURSOR_START_X + (CURSOR_REST_X - CURSOR_START_X) * cursorEased;
+
+  const cursorY = frame >= 108
+    ? CURSOR_REST_Y
+    : CURSOR_START_Y + (CURSOR_REST_Y - CURSOR_START_Y) * cursorEased;
+
   const cursorOpacity = interpolate(frame, [100, 102], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Button click scale / press effect
+  // Click press — scale the emoji down briefly
   const clickP = interpolate(frame, [108, 110, 112], [0, 1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  
-  const btnClickScale = interpolate(clickP, [0, 1], [1, 0.94]);
-  const btnClickOffset = interpolate(clickP, [0, 1], [0, 4]);
-  const finalBtnScale = btnScaleSpring * btnClickScale;
+  const cursorClickScale = interpolate(clickP, [0, 1], [1, 0.8]);
 
-  // ── Ripple Effect (frame 108+)
+  // Button click scale / press — driven by its own spring, independent of cursor
+  const btnClickP = interpolate(frame, [108, 110, 112], [0, 1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const btnClickScale  = interpolate(btnClickP, [0, 1], [1, 0.94]);
+  const btnClickOffset = interpolate(btnClickP, [0, 1], [0, 4]);
+  const finalBtnScale  = btnScaleSpring * btnClickScale;
   const rippleScale   = interpolate(frame, [108, 120], [0, 15], { extrapolateRight: "clamp" });
   const rippleOpacity = interpolate(frame, [108, 120], [0.6, 0], { extrapolateRight: "clamp" });
 
@@ -457,22 +460,7 @@ export const Scene1: React.FC = () => {
   });
   const showCssWin2 = frame >= 175 && frame < 236;
 
-  // ── Highlighter sweeps left-to-right over the transition line (frame 185–205)
-  const highlightProgress = interpolate(frame, [185, 205], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  // const showHighlight = frame >= 185 && frame < 220;
-
-  // Highlighter fades out (frame 215–220)
-  const highlightOpacity = frame >= 215
-    ? interpolate(frame, [215, 220], [1, 0], {
-        extrapolateLeft: "clamp",
-        extrapolateRight: "clamp",
-      })
-    : 1;
-
-  // Non-highlighted lines dim while highlight is active, restore after
+  // Non-highlighted lines dim while transition line stays full opacity, restore after
   let nonHighlightDim: number;
   if (frame < 190) {
     nonHighlightDim = 1;
@@ -504,15 +492,8 @@ export const Scene1: React.FC = () => {
     ? interpolate(cssWin2ExitSpring, [0, 1], [1, 0])
     : 1;
 
-  // Combined window 2 transform & opacity
-  const cssWin2Transform = `translateY(${cssWin2SlideY + cssWin2ExitY}px)`;
-  const cssWin2FinalOpacity = cssWin2Opacity * cssWin2ExitOpacity;
-
-  // ── Highlight bar width
-  // Mono font at size 40 ≈ 24px per char
-  const CHAR_W = 24;
-  const HIGHLIGHT_FULL_W = TRANSITION_LINE_TEXT.length * CHAR_W;
-  const highlightBarW = highlightProgress * HIGHLIGHT_FULL_W;
+  const cssWin2Transform      = `translateY(${cssWin2SlideY + cssWin2ExitY}px)`;
+  const cssWin2FinalOpacity   = cssWin2Opacity * cssWin2ExitOpacity;
 
   return (
     <AbsoluteFill style={{
@@ -586,22 +567,21 @@ export const Scene1: React.FC = () => {
           <div style={{
             position: "relative",
             overflow: "hidden",
-            background: "#FFD700",
-            color: "#0D1117",
+            background: "#3c47e3",
+            color: "#c5c1c1",
             padding: "24px 48px",
-            borderRadius: 12,
+            borderRadius: 15,
             fontFamily: FONTS.mono,
             fontSize: 36,
             fontWeight: 800,
-            textTransform: "uppercase",
+            textTransform: "capitalize",
             letterSpacing: "0.02em",
-            boxShadow: `0 ${8 - btnClickOffset}px 0 #C69000`,
+            boxShadow: `0 ${8 - btnClickOffset}px 0 #3c47e3`,
             transform: `scale(${finalBtnScale}) translateY(${btnClickOffset}px)`,
             transformOrigin: "center center",
           }}>
             Toggle Card
 
-            {/* Ripple */}
             {frame >= 108 && (
               <div style={{
                 position: "absolute",
@@ -661,57 +641,23 @@ export const Scene1: React.FC = () => {
             </div>
           </div>
 
-          {/* ── Finger cursor ───────────────────────────────────────────
-              Moves from off-screen to rest position above the button.
-              Because btnClickOffset safely resolves to 0 outside click frames,
-              we no longer need a conditional check inside the translation. */}
-          {frame >= 100 && (
-            <div style={{
-              position: "absolute",
-              top: 36,
-              left: 120,
-              transform: `translate(${cursorX}px, ${cursorY + btnClickOffset}px)`,
-              opacity: cursorOpacity,
-              zIndex: 50,
-              pointerEvents: "none",
-            }}>
-              {/* Pointing hand / finger SVG */}
-              <svg
-                width="80"
-                height="80"
-                viewBox="0 0 64 64"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                {/* Finger body */}
-                <path
-                  d="M28 38 L28 16 C28 13.8 29.8 12 32 12 C34.2 12 36 13.8 36 16 L36 38"
-                  stroke="white"
-                  strokeWidth="2"
-                  fill="white"
-                />
-                {/* Palm / fist */}
-                <path
-                  d="M20 36 C20 32.5 22.5 30 26 30 L28 30 L28 38 L36 38 L36 30 L38 30 C39.5 30 41 30.8 42 32 L44 36 L44 46 C44 50.4 40.4 54 36 54 L28 54 C23.6 54 20 50.4 20 46 Z"
-                  fill="white"
-                  stroke="#222"
-                  strokeWidth="1.2"
-                  strokeLinejoin="round"
-                />
-                {/* Finger tip cap */}
-                <path
-                  d="M28 16 C28 13.8 29.8 12 32 12 C34.2 12 36 13.8 36 16 L36 22 L28 22 Z"
-                  fill="white"
-                  stroke="#222"
-                  strokeWidth="1"
-                />
-                {/* Knuckle lines */}
-                <line x1="28" y1="26" x2="36" y2="26" stroke="#ccc" strokeWidth="1" />
-                <line x1="28" y1="32" x2="36" y2="32" stroke="#ccc" strokeWidth="1" />
-              </svg>
-            </div>
-          )}
+        </div>
+      )}
 
+      {/* ── Finger cursor — independent, not tied to button ─────────────── */}
+      {frame >= 100 && frame < 175 && (
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 250,
+          transform: `translate(${cursorX}px, ${cursorY}px) scale(${cursorClickScale})`,
+          opacity: cursorOpacity * uiFadeOut,
+          zIndex: 50,
+          pointerEvents: "none",
+          filter: "drop-shadow(0px 8px 12px rgba(0,0,0,0.5))",
+          rotate: "-10deg",
+        }}>
+          <span style={{ fontSize: 80, lineHeight: 1 }}>👆</span>
         </div>
       )}
 
@@ -732,9 +678,8 @@ export const Scene1: React.FC = () => {
               <CodeLine tokens={CSS2_OPACITY} />
             </div>
 
-            {/* Transition line — always full opacity so highlighted text pops */}
+            {/* Transition line — always full opacity while other lines dim */}
             <div style={{ position: "relative" }}>
-              {/* Code text always rendered at full opacity */}
               <CodeLine tokens={CSS2_TRANSITION} />
             </div>
 
