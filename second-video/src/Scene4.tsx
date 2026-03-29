@@ -40,7 +40,7 @@ const easeOutBack = (t: number) => {
 
 const RECT_H       = 116;    // rectangle height
 const RECT_PAD_X   = 56;     // horizontal padding inside each rect
-const GAP          = 30;     // gap between the two rects at rest
+const GAP          = 35;     // gap between the two rects at rest
 const FONT_SIZE    = 48;     // property text font size
 const CHAR_W       = 0.575;  // JetBrains Mono approx width ratio at this size
 
@@ -113,12 +113,12 @@ export const Scene4: React.FC = () => {
   });
 
   // ── Sentence words stagger in (frames 30–50) ──────────────────────────────
-  const sentenceWords: { word: string; start: number; color?: string }[] = [
-    { word: "Two",        start: 30, color: COLORS.accentA },
-    { word: "properties", start: 36 },
-    { word: "change",     start: 42 },
-    { word: "that.",      start: 47 },
-  ];
+  // const sentenceWords: { word: string; start: number; color?: string }[] = [
+  //   { word: "Two",        start: 30, color: COLORS.accentA },
+  //   { word: "properties", start: 36 },
+  //   { word: "change",     start: 42 },
+  //   { word: "that.",      start: 47 },
+  // ];
 
   // ── Full scene fade-out (frames 55–60) ────────────────────────────────────
   const sceneFade = interpolate(frame, [55, 60], [1, 0], {
@@ -135,7 +135,7 @@ export const Scene4: React.FC = () => {
         justifyContent: "center",
         opacity: sceneFade,
         position: "relative",
-        left: -30, // Nudge left to visually center the composition (since the right rect is wider)
+        left: -36, // Nudge left to visually center the composition (since the right rect is wider)
         scale: 0.75, // Slight overall scale up to add energy and prevent black edges during fade-out
       }}
     >
@@ -249,10 +249,10 @@ export const Scene4: React.FC = () => {
               <div
                 style={{
                   position: "absolute",
-                  left: cx + leftX - CIRCLE_R,
-                  top: rectTop - STEM_H - CIRCLE_R * 2,
-                  width: CIRCLE_R * 2,
-                  height: CIRCLE_R * 2,
+                  left: cx + leftX - CIRCLE_R - 30,
+                  top: rectTop - STEM_H - CIRCLE_R * 3,
+                  width: CIRCLE_R * 3,
+                  height: CIRCLE_R * 3,
                   borderRadius: "50%",
                   background: COLOR_L,
                   boxShadow: `0 0 28px rgba(99, 102, 241, 0.4)`,
@@ -267,7 +267,7 @@ export const Scene4: React.FC = () => {
                 <span
                   style={{
                     fontFamily: FONTS.mono,
-                    fontSize: 65,
+                    fontSize: 90,
                     fontWeight: 800,
                     color: "rgba(0, 0, 0)", // Transparent color
                      // Blurred so it acts as an abstract design element
@@ -299,10 +299,10 @@ export const Scene4: React.FC = () => {
               <div
                 style={{
                   position: "absolute",
-                  left: cx + rightX - CIRCLE_R,
+                  left: cx + rightX - CIRCLE_R - 30,
                   top: rectTop + RECT_H + STEM_H,
-                  width: CIRCLE_R * 2,
-                  height: CIRCLE_R * 2,
+                  width: CIRCLE_R * 3,
+                  height: CIRCLE_R * 3,
                   borderRadius: "50%",
                   background: COLOR_R,
                   boxShadow: `0 0 28px rgba(236, 72, 153, 0.4)`,
@@ -317,7 +317,7 @@ export const Scene4: React.FC = () => {
                 <span
                   style={{
                     fontFamily: FONTS.mono,
-                    fontSize: 65,
+                    fontSize: 90,
                     fontWeight: 800,
                     color: "rgba(0, 0, 0)", // Transparent color
                      // Blurred so it acts as an abstract design element

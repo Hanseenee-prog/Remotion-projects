@@ -1,333 +1,359 @@
-// Scene 5 — "Two properties change that.
-//             @starting-style — defines what your card looks like the
-//             moment before it appears. Now CSS has a true starting point."
+// Scene 5 — "@starting-style"
 //
-// Visual: @starting-style code block types in with a glowing highlight.
-// A "moment before" timeline marker animates in.
+// Timeline:
+//   1–15   : Top Pill badge enters (01 pops blue, text slides right)
+//   1–12   : Code window slides UP to center (Bounce + Scale 0.8 -> 1)
+//   10–20  : "@starting-style {" types out
+//   45–65  : "opacity: 0;" types out (Starts at frame 45)
+//   65–95  : "transform: scale(0.95);" types out
+//   150-160: Code window scales down, fades out, and slides DOWN
 
 import React from "react";
 import {
   AbsoluteFill,
   useCurrentFrame,
+  useVideoConfig,
   interpolate,
+  spring,
 } from "remotion";
-import { COLORS, FONTS, SAFE, CANVAS } from "./tokens";
+import { COLORS, FONTS } from "./tokens";
 
-const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+// ─── Constants & Palette ──────────────────────────────────────────────────────
 
-function fadeUp(frame: number, startFrame: number, duration = 18, distance = 28) {
-  const t = Math.min(Math.max((frame - startFrame) / duration, 0), 1);
-  const e = easeOut(t);
-  return { opacity: e, transform: `translateY(${(1 - e) * distance}px)` };
+const BLUE_ACCENT = "#6366F1"; // The Blue
+
+const SYNTAX = {
+  selector: COLORS.selector || "#7EE787", 
+  property: COLORS.property || "#79C0FF", 
+  value: COLORS.value || "#A5D6FF",    
+  punctuation: COLORS.punctuation || "#C9D1D9",
+  atRule: "#D2A8FF",                     
+  number: "#FF7B72",                     
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function clamp(v: number, lo = 0, hi = 1) {
+  return Math.min(Math.max(v, lo), hi);
 }
 
-function useTyped(text: string, startFrame: number, cps = 38, frame: number) {
-  const chars = Math.max(0, Math.floor(((frame - startFrame) / 30) * cps));
-  return text.slice(0, chars);
-}
+// ─── Code Window Shell ────────────────────────────────────────────────────────
 
-const T: React.FC<{ children: React.ReactNode; color?: string }> = ({
-  children,
-  color = COLORS.codeText,
-}) => <span style={{ color, fontFamily: FONTS.mono, whiteSpace: "pre" }}>{children}</span>;
+type FileType = "css" | "js";
+const FILE_BADGE: Record<FileType, { bg: string; label: string }> = {
+  css: { bg: "#6B4FBB", label: "css" },
+  js:  { bg: "#C9A227", label: "js"  },
+};
+const FILE_NAME: Record<FileType, string> = {
+  css: "style.css",
+  js:  "script.js",
+};
 
-// ─── Code snippet ─────────────────────────────────────────────────────────────
-// @starting-style block nested inside .card.visible
-const CODE: Array<{ tokens: Array<{ text: string; color: string }>; indent: number; highlight?: boolean }> = [
-  {
-    indent: 0,
-    tokens: [
-      { text: ".card.visible", color: COLORS.selector },
-      { text: " {", color: COLORS.punctuation },
-    ],
-  },
-  {
-    indent: 1,
-    tokens: [
-      { text: "display", color: COLORS.property },
-      { text: ": ", color: COLORS.punctuation },
-      { text: "block", color: COLORS.value },
-      { text: ";", color: COLORS.punctuation },
-    ],
-  },
-  {
-    indent: 1,
-    tokens: [
-      { text: "opacity", color: COLORS.property },
-      { text: ": ", color: COLORS.punctuation },
-      { text: "1", color: COLORS.number },
-      { text: ";", color: COLORS.punctuation },
-    ],
-  },
-  {
-    indent: 1,
-    tokens: [
-      { text: "transform", color: COLORS.property },
-      { text: ": ", color: COLORS.punctuation },
-      { text: "translateY", color: COLORS.fnName },
-      { text: "(", color: COLORS.punctuation },
-      { text: "0", color: COLORS.number },
-      { text: ");", color: COLORS.punctuation },
-    ],
-  },
-  { indent: 0, tokens: [{ text: "", color: "" }] },
-  // @starting-style highlight block
-  {
-    indent: 1,
-    highlight: true,
-    tokens: [
-      { text: "@starting-style", color: COLORS.atRule },
-      { text: " {", color: COLORS.punctuation },
-    ],
-  },
-  {
-    indent: 2,
-    highlight: true,
-    tokens: [
-      { text: "opacity", color: COLORS.property },
-      { text: ": ", color: COLORS.punctuation },
-      { text: "0", color: COLORS.number },
-      { text: ";", color: COLORS.punctuation },
-    ],
-  },
-  {
-    indent: 2,
-    highlight: true,
-    tokens: [
-      { text: "transform", color: COLORS.property },
-      { text: ": ", color: COLORS.punctuation },
-      { text: "translateY", color: COLORS.fnName },
-      { text: "(", color: COLORS.punctuation },
-      { text: "24px", color: COLORS.number },
-      { text: ");", color: COLORS.punctuation },
-    ],
-  },
-  {
-    indent: 1,
-    highlight: true,
-    tokens: [{ text: "}", color: COLORS.punctuation }],
-  },
-  { indent: 0, tokens: [{ text: "}", color: COLORS.punctuation }] },
-];
+const CodeWindow: React.FC<{
+  fileType: FileType;
+  style?: React.CSSProperties;
+  children: React.ReactNode;
+}> = ({ fileType, style, children }) => {
+  const badge = FILE_BADGE[fileType];
+  const name  = FILE_NAME[fileType];
+  return (
+    <div style={{
+      width: 920,
+      borderRadius: 18,
+      background: COLORS.codeBg,
+      border: "1.5px solid rgba(255,255,255,0.09)",
+      overflow: "hidden",
+      boxShadow: "0 40px 100px rgba(0,0,0,0.8)",
+      ...style,
+    }}>
+      <div style={{
+        display: "flex", alignItems: "center",
+        background: "#0D1117",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+        paddingLeft: 24, height: 72,
+      }}>
+        <div style={{ display: "flex", gap: 10, marginRight: 28 }}>
+          {["#FF5F57", "#FEBC2E", "#28C840"].map((c) => (
+            <div key={c} style={{ width: 18, height: 18, borderRadius: "50%", background: c }} />
+          ))}
+        </div>
+        <div style={{
+          display: "flex", alignItems: "center", gap: 10,
+          background: COLORS.codeBg,
+          borderRadius: "8px 8px 0 0",
+          padding: "10px 24px 10px 16px",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderBottom: "none", marginBottom: -1,
+        }}>
+          <div style={{
+            background: badge.bg, borderRadius: 5, padding: "2px 8px",
+            fontFamily: FONTS.mono, fontSize: 20, fontWeight: 800,
+            color: "#fff", letterSpacing: "0.04em",
+            textTransform: "uppercase" as const,
+          }}>
+            {badge.label}
+          </div>
+          <span style={{
+            fontFamily: FONTS.mono, fontSize: 26, fontWeight: 600,
+            color: COLORS.offWhite, letterSpacing: "0.01em",
+          }}>
+            {name}
+          </span>
+        </div>
+      </div>
+      <div style={{ padding: "30px 44px 36px 44px" }}>{children}</div>
+    </div>
+  );
+};
+
+// ─── Custom Typed Line Component with Syntax Support ──────────────────────────
+
+const TypedLine: React.FC<{
+  segments: { text: string; color: string }[];
+  startFrame: number;
+  endFrame: number;
+  indent?: number;
+}> = ({ segments, startFrame, endFrame, indent = 0 }) => {
+  const frame = useCurrentFrame();
+  const fullText = segments.map(s => s.text).join("");
+  
+  const progress = clamp((frame - startFrame) / (endFrame - startFrame));
+  const totalCharsToShow = Math.floor(progress * fullText.length);
+
+  if (totalCharsToShow === 0 && frame < startFrame) {
+    return <div style={{ height: 38 * 1.95 }} />; 
+  }
+
+  let charsRemaining = totalCharsToShow;
+
+  return (
+    <div
+      style={{
+        fontFamily: FONTS.mono,
+        fontSize: 38,
+        fontWeight: 700,
+        lineHeight: 1.95,
+        paddingLeft: indent * 30,
+        whiteSpace: "pre",
+      }}
+    >
+      {segments.map((seg, i) => {
+        const showLength = Math.min(seg.text.length, charsRemaining);
+        charsRemaining -= showLength;
+        return (
+          <span key={i} style={{ color: seg.color }}>
+            {seg.text.substring(0, showLength)}
+          </span>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─── Top Pill Component ───────────────────────────────────────────────────────
+
+const TopPill: React.FC = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  const popSpring = spring({
+    fps,
+    frame: Math.max(0, frame - 1),
+    config: { damping: 12, stiffness: 200 },
+    durationInFrames: 10,
+  });
+
+  const slideSpring = spring({
+    fps,
+    frame: Math.max(0, frame - 6),
+    config: { damping: 14, stiffness: 180 },
+    durationInFrames: 12,
+  });
+
+  const textWidth = interpolate(slideSpring, [0, 1], [0, 310]);
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 80,
+        left: "50%",
+        transform: "translateX(-50%)",
+        display: "flex",
+        alignItems: "stretch",
+        height: 64,
+        zIndex: 50,
+      }}
+    >
+      <div
+        style={{
+          background: BLUE_ACCENT,
+          borderRadius: "16px 0 0 16px",
+          padding: "0 28px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transform: `scale(${popSpring})`,
+          transformOrigin: "right center",
+          border: `3px solid ${BLUE_ACCENT}`,
+          zIndex: 2,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: FONTS.mono,
+            fontSize: 36,
+            fontWeight: 900,
+            color: COLORS.codeBg,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          01
+        </span>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          overflow: "hidden",
+          width: textWidth,
+          border: `3px solid ${BLUE_ACCENT}`,
+          borderLeft: "none", 
+          borderRadius: "0 16px 16px 0",
+          paddingLeft: interpolate(slideSpring, [0, 1], [0, 18]),
+          opacity: slideSpring > 0 ? 1 : 0,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: FONTS.mono,
+            fontSize: 32,
+            fontWeight: 800,
+            color: BLUE_ACCENT,
+            whiteSpace: "nowrap",
+          }}
+        >
+          @starting-style
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// ─── Main Scene ───────────────────────────────────────────────────────────────
 
 export const Scene5: React.FC = () => {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
 
-  const line1 = "Two properties";
-  const line2 = "change that.";
-  const tl1 = useTyped(line1, 0, 40, frame);
-  const tl2 = useTyped(line2, 14, 40, frame);
+  const windowEntrance = spring({
+    fps,
+    frame: Math.max(0, frame - 1),
+    config: { damping: 14, stiffness: 180 },
+    durationInFrames: 12,
+  });
 
-  const sub = "@starting-style";
-  const ts = useTyped(sub, 30, 40, frame);
+  const windowExit = spring({
+    fps,
+    frame: Math.max(0, frame - 150),
+    config: { damping: 20, stiffness: 200 },
+    durationInFrames: 10,
+  });
 
-  const CHARS_PER_SEC = 70;
-  const getCodeProgress = (lineIdx: number) => {
-    const lineStart = 32 + lineIdx * 6;
-    const lineText = CODE[lineIdx].tokens.map((t) => t.text).join("");
-    const chars = Math.max(0, Math.floor(((frame - lineStart) / 30) * CHARS_PER_SEC));
-    return Math.min(chars, lineText.length);
-  };
+  const translateY = interpolate(windowEntrance, [0, 1], [800, 0]) + 
+                     interpolate(windowExit, [0, 1], [0, 200]);
+                     
+  const scale = interpolate(windowEntrance, [0, 1], [0.8, 1]) * interpolate(windowExit, [0, 1], [1, 0.9]);
 
-  // Glow pulse on @starting-style lines after they appear
-  const glowOpacity = interpolate(
-    frame % 40,
-    [0, 20, 40],
-    [0.12, 0.22, 0.12],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-  );
-
-  // "moment before" callout appears at frame 90
-  const momentStyle = fadeUp(frame, 90, 18);
-
-  // Bottom caption
-  const cap = "Now CSS has a true starting point.";
-  const tc = useTyped(cap, 94, 38, frame);
+  const opacity = interpolate(windowExit, [0, 1], [1, 0]);
 
   return (
     <AbsoluteFill
       style={{
+        background: "transparent",
         display: "flex",
-        flexDirection: "column",
         alignItems: "center",
-        paddingTop: SAFE.top + 70,
-        paddingLeft: SAFE.left + 20,
-        paddingRight: SAFE.right + 20,
+        justifyContent: "center",
       }}
     >
-      {/* ── Headline ─────────────────────────────────────────── */}
-      <div style={{ width: "100%", maxWidth: CANVAS.safeWidth, marginBottom: 14 }}>
-        {[
-          { text: tl1, start: 0 },
-          { text: tl2, start: 10 },
-        ].map(({ text, start }, i) => (
-          <div
-            key={i}
-            style={{
-              ...fadeUp(frame, start, 16),
-              fontFamily: FONTS.display,
-              fontSize: 68,
-              fontWeight: 800,
-              color: COLORS.white,
-              lineHeight: 1.15,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {text}
+      <TopPill />
+
+      <div style={{ 
+        transform: `translateY(${translateY}px) scale(${scale})`,
+        opacity: opacity 
+      }}>
+        <CodeWindow fileType="css">
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+            
+            <div style={{ fontFamily: FONTS.mono, fontSize: 38, fontWeight: 700, lineHeight: 1.95 }}>
+              <span style={{ color: SYNTAX.selector }}>.card.show</span>{" "}
+              <span style={{ color: SYNTAX.punctuation }}>{"{"}</span>
+            </div>
+            <div style={{ fontFamily: FONTS.mono, fontSize: 38, fontWeight: 700, lineHeight: 1.95, paddingLeft: 30 }}>
+              <span style={{ color: SYNTAX.property }}>display:</span>{" "}
+              <span style={{ color: SYNTAX.value }}>block</span>
+              <span style={{ color: SYNTAX.punctuation }}>;</span>
+            </div>
+            <div style={{ fontFamily: FONTS.mono, fontSize: 38, fontWeight: 700, lineHeight: 1.95, paddingLeft: 30 }}>
+              <span style={{ color: SYNTAX.property }}>opacity:</span>{" "}
+              <span style={{ color: SYNTAX.number }}>1</span>
+              <span style={{ color: SYNTAX.punctuation }}>;</span>
+            </div>
+            {/* Empty line between declaration and opacity: 0 */}
+            <div style={{ height: 38 * 1.95 }} />
+
+            <TypedLine 
+              segments={[
+                { text: "@starting-style ", color: SYNTAX.atRule },
+                { text: "{", color: SYNTAX.punctuation }
+              ]}
+              startFrame={10} 
+              endFrame={20} 
+              indent={1} 
+            />
+            
+            <TypedLine 
+              segments={[
+                { text: "opacity", color: SYNTAX.property },
+                { text: ": ", color: SYNTAX.punctuation },
+                { text: "0", color: SYNTAX.number },
+                { text: ";", color: SYNTAX.punctuation }
+              ]}
+              startFrame={45} 
+              endFrame={65} 
+              indent={2} 
+            />
+            
+            <TypedLine 
+              segments={[
+                { text: "transform", color: SYNTAX.property },
+                { text: ": ", color: SYNTAX.punctuation },
+                { text: "scale", color: SYNTAX.value },
+                { text: "(", color: SYNTAX.punctuation },
+                { text: "0.95", color: SYNTAX.number },
+                { text: ")", color: SYNTAX.punctuation },
+                { text: ";", color: SYNTAX.punctuation }
+              ]}
+              startFrame={65} 
+              endFrame={95} 
+              indent={2} 
+            />
+            
+            <TypedLine 
+              segments={[{ text: "}", color: SYNTAX.punctuation }]}
+              startFrame={18} 
+              endFrame={20} 
+              indent={1} 
+            />
+
+            <div style={{ fontFamily: FONTS.mono, fontSize: 38, fontWeight: 700, lineHeight: 1.95, color: SYNTAX.punctuation }}>
+              {"}"}
+            </div>
+
           </div>
-        ))}
-        <div
-          style={{
-            ...fadeUp(frame, 22, 16),
-            fontFamily: FONTS.mono,
-            fontSize: 44,
-            fontWeight: 600,
-            color: COLORS.atRule,
-            marginTop: 8,
-            letterSpacing: "-0.01em",
-          }}
-        >
-          {ts}
-          {frame < 60 && (
-            <span
-              style={{
-                display: "inline-block",
-                width: 3,
-                height: "0.85em",
-                background: COLORS.atRule,
-                marginLeft: 3,
-                verticalAlign: "middle",
-                opacity: Math.floor(frame / 7) % 2 === 0 ? 1 : 0,
-              }}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* ── Code block ───────────────────────────────────────── */}
-      <div
-        style={{
-          ...fadeUp(frame, 28, 16),
-          width: "100%",
-          maxWidth: CANVAS.safeWidth,
-          borderRadius: 20,
-          background: COLORS.codeBg,
-          border: "1.5px solid rgba(255,255,255,0.08)",
-          overflow: "hidden",
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            padding: "14px 20px",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          {[COLORS.accentC, "#F0C674", COLORS.accentA].map((c, i) => (
-            <div
-              key={i}
-              style={{ width: 12, height: 12, borderRadius: "50%", background: c, opacity: 0.7 }}
-            />
-          ))}
-          <span style={{ fontFamily: FONTS.mono, fontSize: 18, color: COLORS.comment, marginLeft: 8 }}>
-            styles.css
-          </span>
-        </div>
-
-        {/* Lines */}
-        <div style={{ padding: "24px 0", fontFamily: FONTS.mono, fontSize: 23, lineHeight: 1.85 }}>
-          {CODE.map((line, lineIdx) => {
-            const progress = getCodeProgress(lineIdx);
-            let charsLeft = progress;
-            const lineText = line.tokens.map((t) => t.text).join("");
-            const isTyping = progress > 0 && progress < lineText.length;
-
-            return (
-              <div
-                key={lineIdx}
-                style={{
-                  paddingLeft: 28 + line.indent * 24,
-                  paddingRight: 28,
-                  background: line.highlight
-                    ? `rgba(255,123,114,${glowOpacity})`
-                    : "transparent",
-                  borderLeft: line.highlight
-                    ? `3px solid ${COLORS.atRule}88`
-                    : "3px solid transparent",
-                  transition: "background 0.3s",
-                }}
-              >
-                {line.tokens.map((token, ti) => {
-                  if (charsLeft <= 0) return null;
-                  const show = token.text.slice(0, charsLeft);
-                  charsLeft -= token.text.length;
-                  return <T key={ti} color={token.color}>{show}</T>;
-                })}
-                {isTyping && lineIdx === CODE.findIndex((_, i) => getCodeProgress(i) < CODE[i].tokens.map(t => t.text).join("").length && getCodeProgress(i) > 0) && (
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: 2,
-                      height: "0.85em",
-                      background: COLORS.accentA,
-                      marginLeft: 2,
-                      verticalAlign: "middle",
-                      opacity: Math.floor(frame / 7) % 2 === 0 ? 1 : 0,
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── "moment before" callout ──────────────────────────── */}
-      <div
-        style={{
-          ...momentStyle,
-          marginTop: 30,
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-          padding: "16px 36px",
-          borderRadius: 100,
-          background: "rgba(255,123,114,0.1)",
-          border: `1px solid ${COLORS.atRule}44`,
-        }}
-      >
-        <span style={{ fontSize: 28 }}>⏮</span>
-        <span
-          style={{
-            fontFamily: FONTS.display,
-            fontSize: 26,
-            fontWeight: 600,
-            color: COLORS.atRule,
-          }}
-        >
-          defines the moment before it appears
-        </span>
-      </div>
-
-      {/* ── Bottom caption ───────────────────────────────────── */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: SAFE.bottom + 50,
-          left: SAFE.left + 20,
-          right: SAFE.right + 20,
-          ...fadeUp(frame, 92, 16),
-          fontFamily: FONTS.display,
-          fontSize: 36,
-          fontWeight: 500,
-          color: COLORS.accentA,
-          lineHeight: 1.5,
-        }}
-      >
-        {tc}
+        </CodeWindow>
       </div>
     </AbsoluteFill>
   );
