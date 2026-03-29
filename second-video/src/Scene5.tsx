@@ -289,7 +289,7 @@ export const Scene5: React.FC = () => {
   const showPhase2 = frame >= 160;
 
   return (
-    <AbsoluteFill style={{ background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", left: 70 }}>
+    <AbsoluteFill style={{ background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", }}>
       <TopPill />
 
       {/* ── Code window (frames 0–160) ── */}
@@ -322,7 +322,7 @@ export const Scene5: React.FC = () => {
 
       {/* ── Phase 2: vertical timeline + travelling card (frames 160–252) ── */}
       {showPhase2 && (
-        <div style={{ position: "absolute", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: phaseInEased * phaseOutOpacity }}>
+        <div style={{ position: "absolute", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", opacity: phaseInEased * phaseOutOpacity,  position: "relative", left: 70  }}>
           
           {/* ── Thicker Vertical dashed line (Left) ── */}
           <div style={{
