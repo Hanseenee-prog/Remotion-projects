@@ -298,8 +298,8 @@ const CSS2_OPACITY: Token[] = [
 const CSS2_TRANSITION: Token[] = [
   { text: "  transition", type: "property" },
   { text: ": ",           type: "punctuation" },
-  { text: "opacity",      type: "value" },
-  { text: " 0.4s",        type: "keyword" },
+  { text: "display",      type: "keyword" },
+  { text: " 0.4s",        type: "value" },
   { text: " ease",        type: "value" },
   { text: ";",            type: "punctuation" },
 ];

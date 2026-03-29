@@ -1,12 +1,16 @@
-// Scene 3 — "Discrete Values"
-// Total duration: 215 frames
+// Scene 3 — "Discrete Values" — revised
 //
-// Frames   0–160  : Original scene — unchanged
-// Frames 160–170  : Everything exits (cards + callout slide/fade out)
-// Frames 180–205  : style.css code window zooms in (same as Scene 1 Window A)
-//                   — shows .card.show { opacity: 1; display: block; }
-//                   — transition line red-highlight blinks at ~frame 192
-// Frames 205–215  : Code window exits (slides down + fades out)
+// Changes from previous version:
+//  - Cards slide in from their respective sides (right pair from right, left pair from left)
+//    all at the same time, spring over ~10 frames
+//  - "display: none" card — no background fill, border only
+//  - Bottom row is now "flex-direction": left = row (3 mini-cards horizontal),
+//    right = column (3 mini-cards stacked)
+//  - Line + X icon removed → replaced with a big skip-next icon between cards
+//  - Exit (165–172): cards slide back the way they came
+//  - Code window (175–235): shows .card.show { opacity:1; display:block; transition: display 3s ease; }
+//  - Blink fires on "transition: display 3s ease;" (NOT display: block), 3 pulses
+//  - Code window exits at frame 235
 
 import React from "react";
 import {
@@ -20,16 +24,14 @@ import { COLORS, FONTS } from "./tokens";
 
 const RED_ACCENT = "#FF5F57";
 
-// ─── Dimensions (unchanged from original) ────────────────────────────────────
-const START_W = 220;
-const START_H = 280;
-const END_W = 240;
-const END_H = 320;
-const START_SPREAD = 330;
-const END_SPREAD = 280;
-const VERTICAL_GAP = 280;
+// ─── Layout constants ─────────────────────────────────────────────────────────
+const CARD_W       = 240;
+const CARD_H       = 300;
+const SPREAD       = 290;    // horizontal distance from center to each card's center
+const VERTICAL_GAP = 290;    // vertical distance from center to each row
+const SLIDE_DIST   = 720;    // off-screen start distance
 
-// ─── Easing helpers (needed for code window) ─────────────────────────────────
+// ─── Easing helpers ───────────────────────────────────────────────────────────
 const easeOut3 = (t: number) => 1 - Math.pow(1 - t, 3);
 const easeOutBack3 = (t: number) => {
   const c1 = 1.70158;
@@ -43,12 +45,11 @@ function prog3(frame: number, start: number, end: number) {
   return clamp3((frame - start) / (end - start));
 }
 
-// ─── Token system (copy of Scene 1's — keeps it self-contained) ──────────────
+// ─── Token system ─────────────────────────────────────────────────────────────
 type TT =
   | "selector" | "property" | "value" | "keyword"
   | "fnName"   | "string"   | "comment" | "punctuation"
   | "varName"  | "operator";
-
 interface Token { text: string; type: TT }
 
 function tc(type: TT): string {
@@ -68,35 +69,27 @@ function tc(type: TT): string {
 }
 
 // ─── Code line renderer ───────────────────────────────────────────────────────
-const CODE_FONT_SIZE = 38;
-const CODE_LINE_HEIGHT = 1.95;
-
 const CodeLine: React.FC<{
   tokens: Token[];
-  highlighted?: boolean; // red blink highlight for the transition line
+  highlighted?: boolean;
 }> = ({ tokens, highlighted = false }) => (
   <div style={{
     fontFamily: FONTS.mono,
-    fontSize: CODE_FONT_SIZE,
+    fontSize: 38,
     fontWeight: 700,
-    lineHeight: CODE_LINE_HEIGHT,
+    lineHeight: 1.95,
     whiteSpace: "pre",
     borderRadius: 6,
     padding: "0 8px",
     margin: "0 -8px",
     background: highlighted ? `${RED_ACCENT}28` : "transparent",
-    transition: "background 0.1s",
     position: "relative",
   }}>
-    {/* Left accent bar when highlighted */}
     {highlighted && (
       <div style={{
         position: "absolute",
-        left: 0,
-        top: "10%",
-        bottom: "10%",
-        width: 4,
-        borderRadius: 2,
+        left: 0, top: "10%", bottom: "10%",
+        width: 4, borderRadius: 2,
         background: RED_ACCENT,
       }} />
     )}
@@ -106,9 +99,8 @@ const CodeLine: React.FC<{
   </div>
 );
 
-// ─── Code Window shell (identical to Scene 1) ────────────────────────────────
+// ─── Code Window shell ────────────────────────────────────────────────────────
 type FileType = "css" | "js";
-
 const FILE_BADGE: Record<FileType, { bg: string; label: string }> = {
   css: { bg: "#6B4FBB", label: "css" },
   js:  { bg: "#C9A227", label: "js"  },
@@ -117,7 +109,6 @@ const FILE_NAME: Record<FileType, string> = {
   css: "style.css",
   js:  "script.js",
 };
-
 const CodeWindow: React.FC<{
   fileType: FileType;
   style?: React.CSSProperties;
@@ -135,15 +126,11 @@ const CodeWindow: React.FC<{
       boxShadow: "0 28px 72px rgba(0,0,0,0.70)",
       ...style,
     }}>
-      {/* Title bar */}
       <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0,
+        display: "flex", alignItems: "center",
         background: "#0D1117",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
-        paddingLeft: 24,
-        height: 72,
+        paddingLeft: 24, height: 72,
       }}>
         <div style={{ display: "flex", gap: 10, marginRight: 28 }}>
           {["#FF5F57", "#FEBC2E", "#28C840"].map((c) => (
@@ -151,103 +138,175 @@ const CodeWindow: React.FC<{
           ))}
         </div>
         <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
+          display: "flex", alignItems: "center", gap: 10,
           background: COLORS.codeBg,
           borderRadius: "8px 8px 0 0",
           padding: "10px 24px 10px 16px",
           border: "1px solid rgba(255,255,255,0.08)",
-          borderBottom: "none",
-          marginBottom: -1,
+          borderBottom: "none", marginBottom: -1,
         }}>
           <div style={{
-            background: badge.bg,
-            borderRadius: 5,
-            padding: "2px 8px",
-            fontFamily: FONTS.mono,
-            fontSize: 20,
-            fontWeight: 800,
-            color: "#fff",
-            letterSpacing: "0.04em",
+            background: badge.bg, borderRadius: 5, padding: "2px 8px",
+            fontFamily: FONTS.mono, fontSize: 20, fontWeight: 800,
+            color: "#fff", letterSpacing: "0.04em",
             textTransform: "uppercase" as const,
           }}>
             {badge.label}
           </div>
           <span style={{
-            fontFamily: FONTS.mono,
-            fontSize: 26,
-            fontWeight: 600,
-            color: COLORS.offWhite,
-            letterSpacing: "0.01em",
+            fontFamily: FONTS.mono, fontSize: 26, fontWeight: 600,
+            color: COLORS.offWhite, letterSpacing: "0.01em",
           }}>
             {name}
           </span>
         </div>
       </div>
-      {/* Code body */}
-      <div style={{ padding: "30px 44px 36px 44px" }}>
-        {children}
-      </div>
+      <div style={{ padding: "30px 44px 36px 44px" }}>{children}</div>
     </div>
   );
 };
 
-// ─── CSS token lines for the snippet ─────────────────────────────────────────
-// .card.show {
+// ─── CSS token lines ──────────────────────────────────────────────────────────
 const CSS_LINE_SELECTOR: Token[] = [
-  { text: ".card",  type: "selector"    },
+  { text: ".card",  type: "selector" },
   { text: ".",      type: "punctuation" },
-  { text: "show",   type: "selector"    },
+  { text: "show",   type: "selector" },
   { text: " {",     type: "punctuation" },
 ];
-//   opacity: 1;
 const CSS_LINE_OPACITY: Token[] = [
-  { text: "  opacity", type: "property"    },
+  { text: "  opacity", type: "property" },
   { text: ": ",        type: "punctuation" },
-  { text: "1",         type: "value"       },
+  { text: "1",         type: "value" },
   { text: ";",         type: "punctuation" },
 ];
-//   display: block;
 const CSS_LINE_DISPLAY: Token[] = [
-  { text: "  display", type: "property"    },
+  { text: "  display", type: "property" },
   { text: ": ",        type: "punctuation" },
-  { text: "block",     type: "keyword"     },
+  { text: "block",     type: "keyword" },
   { text: ";",         type: "punctuation" },
 ];
-// }
-const CSS_LINE_CLOSE: Token[] = [
-  { text: "}", type: "punctuation" },
+// transition: display 3s ease;  ← the blink target
+const CSS_LINE_TRANSITION: Token[] = [
+  { text: "  transition", type: "property" },
+  { text: ": ",           type: "punctuation" },
+  { text: "display",      type: "keyword" },
+  { text: " 3s",          type: "value" },
+  { text: " ease",        type: "value" },
+  { text: ";",            type: "punctuation" },
 ];
+const CSS_LINE_CLOSE: Token[] = [{ text: "}", type: "punctuation" }];
 
-// ─── Original sub-components (unchanged) ─────────────────────────────────────
-const DiscreteCard: React.FC<{
-  property: string;
-  value: string;
+// ─── Skip-next icon ───────────────────────────────────────────────────────────
+const SkipIcon: React.FC<{ scale: number; opacity: number }> = ({ scale, opacity }) => (
+  <div style={{
+    opacity,
+    transform: `scale(${scale})`,
+    transformOrigin: "center",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    width: 130, 
+    height: 130,
+    borderRadius: "50%",
+    background: "rgba(255, 255, 255, 0.08)",
+    border: "2px solid rgba(255, 255, 255, 0.15)",
+  }}>
+    <svg width="70" height="70" viewBox="0 0 24 24" fill="rgba(255,255,255,0.80)">
+      {/* Left triangle */}
+      <polygon points="5,4 15,12 5,20" />
+      {/* Right triangle */}
+      <polygon points="13,4 23,12 13,20" />
+      {/* Vertical bar on right */}
+      <rect x="21.5" y="4" width="2.5" height="16" rx="1" />
+    </svg>
+  </div>
+);
+
+// ─── Mini flex demo ───────────────────────────────────────────────────────────
+const MiniSquare: React.FC<{ color: string }> = ({ color }) => (
+  <div style={{
+    width: 34, height: 34, borderRadius: 5,
+    background: `${color}90`, border: `2px solid ${color}`,
+  }} />
+);
+
+const RowDemo: React.FC = () => (
+  <div style={{ 
+    display: "flex", flexDirection: "row", gap: 7, alignItems: "center", justifyContent: "center",
+    background: "#080808", // Distinguishable dark shade
+    padding: "12px 14px",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.05)",
+  }}>
+    {[0, 1, 2].map((i) => <MiniSquare key={i} color="#FF9500" />)}
+  </div>
+);
+const ColDemo: React.FC = () => (
+  <div style={{ 
+    display: "flex", flexDirection: "column", gap: 7, alignItems: "center", justifyContent: "center",
+    background: "#080808", // Distinguishable dark shade
+    padding: "14px 12px",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.05)",
+  }}>
+    {[0, 1, 2].map((i) => <MiniSquare key={i} color="#FF9500" />)}
+  </div>
+);
+
+// ─── Card shells ──────────────────────────────────────────────────────────────
+// displayNone → no background
+const DisplayCard: React.FC<{
+  value: "none" | "block";
   accent: string;
   textOpacity: number;
-  width: number;
-  height: number;
-}> = ({ property, value, accent, textOpacity, width, height }) => (
-  <div style={{
-    width,
-    height,
-    borderRadius: 24,
-    background: COLORS.codeBg,
-    border: `4px solid ${accent}`,
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    alignItems: "center",
-    boxShadow: `0 30px 60px rgba(0,0,0,0.6)`,
-    zIndex: 100,
-  }}>
-    <div style={{ opacity: textOpacity, display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div style={{ color: COLORS.comment, fontFamily: FONTS.mono, fontSize: 32, marginBottom: 12 }}>
-        {property}:
+  translateX: number;
+}> = ({ value, accent, textOpacity, translateX }) => (
+  <div style={{ transform: `translateX(${translateX}px)`, willChange: "transform" }}>
+    <div style={{
+      width: CARD_W, height: CARD_H, borderRadius: 24,
+      background: value === "none" ? "transparent" : COLORS.codeBg,
+      border: `4px solid ${accent}`,
+      display: "flex", flexDirection: "column",
+      justifyContent: "center", alignItems: "center",
+      boxShadow: value === "none" ? "none" : "0 30px 60px rgba(0,0,0,0.5)",
+      gap: 10,
+    }}>
+      <div style={{ opacity: textOpacity, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+        <div style={{ color: COLORS.comment, fontFamily: FONTS.mono, fontSize: 27, fontWeight: 700 }}>
+          display:
+        </div>
+        <div style={{ color: COLORS.offWhite, fontFamily: FONTS.mono, fontSize: 50, fontWeight: 800, lineHeight: 1 }}>
+          {value}
+        </div>
       </div>
-      <div style={{ color: COLORS.offWhite, fontFamily: FONTS.mono, fontSize: 56, fontWeight: 800 }}>
-        {value}
+    </div>
+  </div>
+);
+
+const FlexCard: React.FC<{
+  direction: "row" | "column";
+  accent: string;
+  textOpacity: number;
+  translateX: number;
+}> = ({ direction, accent, textOpacity, translateX }) => (
+  <div style={{ transform: `translateX(${translateX}px)`, willChange: "transform" }}>
+    <div style={{
+      width: CARD_W, height: CARD_H, borderRadius: 24,
+      background: COLORS.codeBg,
+      border: `4px solid ${accent}`,
+      display: "flex", flexDirection: "column",
+      justifyContent: "center", alignItems: "center",
+      boxShadow: "0 30px 60px rgba(0,0,0,0.5)",
+      gap: 14,
+    }}>
+      <div style={{ opacity: textOpacity, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+        <div style={{ color: COLORS.comment, fontFamily: FONTS.mono, fontSize: 22, fontWeight: 700 }}>
+          flex-direction:
+        </div>
+        <div style={{ color: COLORS.offWhite, fontFamily: FONTS.mono, fontSize: 40, fontWeight: 800, lineHeight: 1 }}>
+          {direction}
+        </div>
+        <div style={{ marginTop: 6 }}>
+          {direction === "row" ? <RowDemo /> : <ColDemo />}
+        </div>
       </div>
     </div>
   </div>
@@ -258,110 +317,79 @@ export const Scene3: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  ORIGINAL SCENE LOGIC — UNTOUCHED
-  // ══════════════════════════════════════════════════════════════════════════
+  // ── Callout entrance ──────────────────────────────────────────────────────
+  const calloutIn = spring({ frame: frame - 5, fps });
 
-  // 1. Core Transition Spring (Frames 10-45)
-  const transition = spring({
-    frame: frame - 10,
+  // ── Card slide-in (frames 0–~10, spring settles fast) ────────────────────
+  const slideSpring = spring({
+    frame,
     fps,
-    config: { damping: 16, stiffness: 90 },
+    config: { damping: 15, stiffness: 210, mass: 0.75 },
+    durationInFrames: 20,
+  });
+  // Left cards: -SLIDE_DIST → -SPREAD  |  Right cards: +SLIDE_DIST → +SPREAD
+  const leftX  = interpolate(slideSpring, [0, 1], [-SLIDE_DIST, -SPREAD]);
+  const rightX = interpolate(slideSpring, [0, 1], [ SLIDE_DIST,  SPREAD]);
+
+  // ── Text fade in ─────────────────────────────────────────────────────────
+  const textFadeIn = interpolate(frame, [16, 36], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
 
-  const currentWidth  = interpolate(transition, [0, 1], [START_W, END_W]);
-  const currentHeight = interpolate(transition, [0, 1], [START_H, END_H]);
-  const currentSpread = interpolate(transition, [0, 1], [START_SPREAD, END_SPREAD]);
+  // ── Skip icon entrance ────────────────────────────────────────────────────
+  const skipPop = spring({ frame: frame - 30, fps, config: { stiffness: 200, damping: 12 } });
+  const skipOpacity = interpolate(frame, [30, 42], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
 
-  const topY    = interpolate(transition, [0, 1], [0, -VERTICAL_GAP]);
-  const bottomY = interpolate(transition, [0, 1], [0,  VERTICAL_GAP]);
-
-  // 2. UI Elements
-  const calloutIn        = spring({ frame: frame - 5, fps });
-  const textFadeIn       = interpolate(frame, [25, 45], [0, 1]);
-  const connectorOpacity = interpolate(frame, [35, 50], [0, 1]);
-  const errorPop         = spring({ frame: frame - 50, fps, config: { stiffness: 200, damping: 12 } });
-
-  const BrokenConnector = () => (
-    <div style={{
-      position: "absolute",
-      width: currentSpread * 2,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      opacity: connectorOpacity,
-      zIndex: -1,
-    }}>
-      <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.5)", borderRadius: 4 }} />
-      <div style={{ transform: `scale(${errorPop})`, margin: "0 40px" }}>
-        <div style={{
-          width: 80, height: 80, borderRadius: "50%", background: RED_ACCENT,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: `0 0 50px ${RED_ACCENT}88`,
-        }}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </div>
-      </div>
-      <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.5)", borderRadius: 4 }} />
-    </div>
-  );
-
-  // ══════════════════════════════════════════════════════════════════════════
-  //  EXIT ANIMATION — Frames 160–170
-  // ══════════════════════════════════════════════════════════════════════════
-
-  // Smooth cubic exit for all existing elements
-  const exitP = prog3(frame, 160, 170);
+  // ── EXIT (165–172): slide back the way cards came ─────────────────────────
+  const exitP     = prog3(frame, 165, 172);
   const exitEased = easeOut3(exitP);
+  const isExiting = frame >= 165;
 
-  // Cards slide outward and fade
-  const exitScale   = interpolate(exitEased, [0, 1], [1, 0.85]);
-  const exitOpacity = interpolate(exitEased, [0, 1], [1, 0]);
-  const exitTopDrift    = interpolate(exitEased, [0, 1], [0, -60]);
-  const exitBottomDrift = interpolate(exitEased, [0, 1], [0,  60]);
+  // During exit, override positions: left goes back to -SLIDE_DIST, right to +SLIDE_DIST
+  const finalLeftX  = isExiting
+    ? interpolate(exitEased, [0, 1], [-SPREAD, -SLIDE_DIST])
+    : leftX;
+  const finalRightX = isExiting
+    ? interpolate(exitEased, [0, 1], [SPREAD, SLIDE_DIST])
+    : rightX;
 
-  // Callout fades earlier (slightly leads the exit)
-  const calloutExitOpacity = interpolate(frame, [160, 167], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const exitGroupOpacity = interpolate(exitEased, [0, 1], [1, 0]);
+  const calloutExitOp    = interpolate(frame, [165, 170], [1, 0], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
+  const skipExitOp = interpolate(frame, [165, 169], [1, 0], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  CODE WINDOW — Frames 180–205 in, 205–215 out
-  // ══════════════════════════════════════════════════════════════════════════
-
-  // Zoom-in entrance (frames 180–187) — easeOutBack for springy overshoot
-  const winInP     = prog3(frame, 180, 187);
+  // ── Code window (frames 175–235) ─────────────────────────────────────────
+  const winInP     = prog3(frame, 175, 183);
   const winScale   = interpolate(easeOutBack3(clamp3(winInP)), [0, 1], [0.36, 1]);
-  const winOpacity = interpolate(easeOut3(clamp3(winInP)),     [0, 1], [0,    1]);
-  const winVisible = frame >= 180 && frame < 240;
+  const winOpacity = interpolate(easeOut3(clamp3(winInP)),     [0, 1], [0, 1]);
+  const winVisible = frame >= 175 && frame < 250;
 
-  // Exit (frames 205–240) — slides down and fades
-  const winExitP       = prog3(frame, 205, 240);
+  // Exit at 235
+  const winExitP       = prog3(frame, 235, 248);
   const winExitY       = interpolate(easeOut3(winExitP), [0, 1], [0, 120]);
   const winExitOpacity = interpolate(easeOut3(winExitP), [0, 1], [1, 0]);
 
-  // Red highlight blink on the `display: block;` line
-  // Blinks on/off twice between frames 192–204
-  // Pattern: on 192–196, off 196–200, on 200–204
+  // 3 blink pulses on "transition: display 3s ease;"
+  // Pulse 1: 190–196  |  Pulse 2: 203–209  |  Pulse 3: 216–222
   const blinkOn =
-    (frame >= 192 && frame < 197) ||
-    (frame >= 200 && frame < 205);
-  const highlightOpacity = blinkOn ? 1 : 0;
+    (frame >= 190 && frame < 197) ||
+    (frame >= 204 && frame < 211) ||
+    (frame >= 218 && frame < 225);
 
-  // Combine entrance + exit opacity
   const winFinalOpacity = winVisible
-    ? winExitP > 0
-      ? winOpacity * winExitOpacity
-      : winOpacity
+    ? winExitP > 0 ? winOpacity * winExitOpacity : winOpacity
     : 0;
   const winFinalY = winExitP > 0 ? winExitY : 0;
 
   return (
     <AbsoluteFill style={{ background: "transparent", alignItems: "center", justifyContent: "center" }}>
 
-      {/* ══════ ORIGINAL ELEMENTS ══════ */}
-
-      {/* ── Pill-Shaped Callout ── */}
+      {/* ── Discrete values callout ────────────────────────────────────── */}
       <div style={{
         position: "absolute",
         top: 100,
@@ -369,72 +397,76 @@ export const Scene3: React.FC = () => {
         borderRadius: 50,
         background: `${RED_ACCENT}15`,
         border: `2px solid ${RED_ACCENT}`,
-        opacity: Math.min(calloutIn, calloutExitOpacity),
+        opacity: Math.min(Number(calloutIn), calloutExitOp),
         transform: `scale(${calloutIn}) translateY(${interpolate(calloutIn, [0, 1], [20, 0])}px)`,
         zIndex: 20,
       }}>
         <span style={{
           fontFamily: FONTS.display,
-          fontSize: 38,
-          fontWeight: 800,
-          color: RED_ACCENT,
-          letterSpacing: "0.02em",
+          fontSize: 38, fontWeight: 800,
+          color: RED_ACCENT, letterSpacing: "0.02em",
         }}>
           Discrete values
         </span>
       </div>
 
+      {/* ── Cards area ─────────────────────────────────────────────────── */}
       <div style={{
         position: "relative",
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        // Apply global exit transform + opacity to everything inside
-        opacity: exitOpacity,
-        transform: `scale(${exitScale})`,
+        width: "100%", height: "100%",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        opacity: isExiting ? exitGroupOpacity : 1,
       }}>
 
-        {/* ROW 1 (Top: display) */}
+        {/* ── ROW 1 top — display: none / block ────────────────────────── */}
         <div style={{
           position: "absolute",
-          transform: `translateY(${topY + exitTopDrift}px)`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          display: "flex", alignItems: "center", justifyContent: "center",
           width: "100%",
+          transform: `translateY(${-VERTICAL_GAP}px)`,
         }}>
-          <BrokenConnector />
-          <div style={{ position: "absolute", transform: `translateX(${-currentSpread}px)` }}>
-            <DiscreteCard property="display" value="none"  accent={RED_ACCENT}       textOpacity={textFadeIn} width={currentWidth} height={currentHeight} />
+          {/* Skip icon center */}
+          <div style={{ position: "absolute", zIndex: 5, opacity: skipOpacity * skipExitOp }}>
+            <SkipIcon scale={skipPop} opacity={1} />
           </div>
-          <div style={{ position: "absolute", transform: `translateX(${currentSpread}px)` }}>
-            <DiscreteCard property="display" value="block" accent={COLORS.selector}  textOpacity={textFadeIn} width={currentWidth} height={currentHeight} />
+
+          {/* Left card: display none — border only */}
+          <div style={{ position: "absolute", transform: `translateX(${finalLeftX}px)` }}>
+            <DisplayCard value="none" accent={RED_ACCENT} textOpacity={textFadeIn} translateX={0} />
+          </div>
+
+          {/* Right card: display block */}
+          <div style={{ position: "absolute", transform: `translateX(${finalRightX}px)` }}>
+            <DisplayCard value="block" accent={COLORS.selector} textOpacity={textFadeIn} translateX={0} />
           </div>
         </div>
 
-        {/* ROW 2 (Bottom: height) */}
+        {/* ── ROW 2 bottom — flex-direction: row / column ──────────────── */}
         <div style={{
           position: "absolute",
-          transform: `translateY(${bottomY + exitBottomDrift}px)`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          display: "flex", alignItems: "center", justifyContent: "center",
           width: "100%",
+          transform: `translateY(${VERTICAL_GAP}px)`,
         }}>
-          <BrokenConnector />
-          <div style={{ position: "absolute", transform: `translateX(${-currentSpread}px)` }}>
-            <DiscreteCard property="height" value="0"    accent={RED_ACCENT}       textOpacity={textFadeIn} width={currentWidth} height={currentHeight} />
+          {/* Skip icon center */}
+          <div style={{ position: "absolute", zIndex: 5, opacity: skipOpacity * skipExitOp }}>
+            <SkipIcon scale={skipPop} opacity={1} />
           </div>
-          <div style={{ position: "absolute", transform: `translateX(${currentSpread}px)` }}>
-            <DiscreteCard property="height" value="auto" accent={COLORS.selector}  textOpacity={textFadeIn} width={currentWidth} height={currentHeight} />
+
+          {/* Left card: flex-direction row */}
+          <div style={{ position: "absolute", transform: `translateX(${finalLeftX}px)` }}>
+            <FlexCard direction="row" accent={RED_ACCENT} textOpacity={textFadeIn} translateX={0} />
+          </div>
+
+          {/* Right card: flex-direction column */}
+          <div style={{ position: "absolute", transform: `translateX(${finalRightX}px)` }}>
+            <FlexCard direction="column" accent={COLORS.selector} textOpacity={textFadeIn} translateX={0} />
           </div>
         </div>
 
       </div>
 
-      {/* ══════ CODE WINDOW (frame 180–215) ══════ */}
+      {/* ── Code window (175–235) ──────────────────────────────────────── */}
       {winVisible && (
         <div style={{
           position: "absolute",
@@ -447,24 +479,19 @@ export const Scene3: React.FC = () => {
           <CodeWindow fileType="css">
             <CodeLine tokens={CSS_LINE_SELECTOR} />
             <CodeLine tokens={CSS_LINE_OPACITY} />
-            {/* display: block — the line that gets red-blink highlighted */}
-            <div style={{
-              position: "relative",
-              borderRadius: 6,
-              overflow: "hidden",
-            }}>
-              {/* Red highlight overlay — blinks on/off */}
+            {/* display: block — no highlight */}
+            <CodeLine tokens={CSS_LINE_DISPLAY} />
+            {/* transition: display 3s ease; — BLINKS */}
+            <div style={{ position: "relative", borderRadius: 6, overflow: "hidden" }}>
               <div style={{
-                position: "absolute",
-                inset: 0,
+                position: "absolute", inset: 0,
                 background: `${RED_ACCENT}22`,
                 borderLeft: `4px solid ${RED_ACCENT}`,
-                opacity: highlightOpacity,
+                opacity: blinkOn ? 1 : 0,
                 borderRadius: 6,
                 pointerEvents: "none",
-                transition: "opacity 0.05s",
               }} />
-              <CodeLine tokens={CSS_LINE_DISPLAY} highlighted={blinkOn} />
+              <CodeLine tokens={CSS_LINE_TRANSITION} highlighted={blinkOn} />
             </div>
             <CodeLine tokens={CSS_LINE_CLOSE} />
           </CodeWindow>
