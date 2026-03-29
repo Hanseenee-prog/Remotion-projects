@@ -1,16 +1,16 @@
 // Scene 4 — "Two properties change that."
 //
-// Timeline (30fps):
-//   0–12   : Both cards start stacked at center (scale 0 → 1, spring pop)
-//   12–40  : Cards fan open — left rotates to -28°, right to +28°
-//             pivot is bottom-center of both cards (they share the axis)
-//   45–70  : Sentence "Two properties change that." fades + slides up, word by word
-//   70–120 : Hold — everything visible
+// Layout (matches sketch):
+//   Two rectangles slide in from left/right, meet at center with a small gap.
+//   Width of each rect is proportional to its text content.
+//   Text inside each rect is blurred.
+//   After rects settle (~frame 20):
+//     — Stem grows UP   from left  rect center → circle "01" pops at top
+//     — Stem grows DOWN from right rect center → circle "02" pops at bottom
+//   Sentence "Two properties change that." rises in word by word (~frame 30)
+//   Hold, then full scene fades out frames 55–60.
 //
-// The "handfan" mechanic:
-//   Both cards sit in a wrapper whose transform-origin is "bottom center".
-//   Left card rotates negative degrees, right card positive.
-//   The bottom edges stay kissing at the same point — the pivot.
+// Total: 60 frames @ 30fps = 2 seconds
 
 import React from "react";
 import {
@@ -36,145 +36,33 @@ const easeOutBack = (t: number) => {
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 };
 
-// ─── Card dimensions ──────────────────────────────────────────────────────────
+// ─── Layout constants ─────────────────────────────────────────────────────────
 
-const CARD_W = 520;
-const CARD_H = 520;
-const BORDER_R = 36;
+const RECT_H       = 116;    // rectangle height
+const RECT_PAD_X   = 56;     // horizontal padding inside each rect
+const GAP          = 30;     // gap between the two rects at rest
+const FONT_SIZE    = 48;     // property text font size
+const CHAR_W       = 0.575;  // JetBrains Mono approx width ratio at this size
 
-// How far each card fans out (degrees)
-const FAN_DEG = 27;
+// Compute widths from text — so each rect hugs its content
+const TEXT_LEFT    = "@starting-style";
+const TEXT_RIGHT   = "transition-behavior";
+const RECT_W_L     = Math.ceil(TEXT_LEFT.length  * FONT_SIZE * CHAR_W) + RECT_PAD_X * 2;
+const RECT_W_R     = Math.ceil(TEXT_RIGHT.length * FONT_SIZE * CHAR_W) + RECT_PAD_X * 2;
 
-// ─── Single fan card ──────────────────────────────────────────────────────────
-// The wrapper's transform-origin is bottom-center (bottom of the card).
-// Rotating the wrapper around that point = handfan open.
+// Stem + circle
+const STEM_H       = 100;
+const CIRCLE_R     = 62;
 
-const FanCard: React.FC<{
-  side: "left" | "right";
-  rotationDeg: number;    // current rotation in degrees
-  popScale: number;       // 0 → 1 entrance pop
-  accentColor: string;
-  number: string;
-  propertyText: string;   // the blurred CSS property name
-  blurAmount: number;     // px blur on the property text
-}> = ({ side, rotationDeg, popScale, accentColor, number, propertyText, blurAmount }) => {
-  const isLeft = side === "left";
+// Slide-in distance (off-screen)
+const SLIDE_DIST   = 860;
 
-  return (
-    // Outer wrapper: handles rotation around bottom-center
-    <div
-      style={{
-        position: "absolute",
-        // Both cards pivot from the same bottom-center point.
-        // We offset left/right by half card width so their inner bottom
-        // corners meet at the pivot.
-        left: isLeft ? -CARD_W : 0,
-        bottom: 0,
-        width: CARD_W,
-        height: CARD_H,
-        transformOrigin: isLeft ? "bottom right" : "bottom left",
-        transform: `rotate(${rotationDeg}deg) scale(${popScale})`,
-        willChange: "transform",
-        zIndex: isLeft ? 1 : 2,
-      }}
-    >
-      {/* Card face */}
-      <div
-        style={{
-          width: CARD_W,
-          height: CARD_H,
-          borderRadius: BORDER_R,
-          background: COLORS.codeBg,
-          border: `5px solid ${accentColor}`,
-          boxShadow: `0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px ${accentColor}22`,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 28,
-          overflow: "hidden",
-          position: "relative",
-        }}
-      >
-        {/* Subtle accent glow behind number */}
-        <div
-          style={{
-            position: "absolute",
-            width: 260,
-            height: 260,
-            borderRadius: "50%",
-            background: accentColor,
-            opacity: 0.06,
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -65%)",
-          }}
-        />
+// Solid colors for the shapes
+const COLOR_L = "#6366F1"; // Indigo
+const COLOR_R = "#EC4899"; // Pink
 
-        {/* Number */}
-        <div
-          style={{
-            fontFamily: FONTS.mono,
-            fontSize: 180,
-            fontWeight: 800,
-            color: accentColor,
-            lineHeight: 1,
-            letterSpacing: "-0.04em",
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
-          {number}
-        </div>
-
-        {/* Property — blurred */}
-        <div
-          style={{
-            fontFamily: FONTS.mono,
-            fontSize: 36,
-            fontWeight: 700,
-            color: COLORS.codeText,
-            textAlign: "center",
-            lineHeight: 1.5,
-            padding: "0 40px",
-            filter: `blur(${blurAmount}px)`,
-            opacity: 0.75,
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
-          {propertyText}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── Word-by-word sentence ────────────────────────────────────────────────────
-
-const SentenceWord: React.FC<{
-  word: string;
-  frame: number;
-  startFrame: number;
-  color?: string;
-}> = ({ word, frame, startFrame, color }) => {
-  const p = prog(frame, startFrame, startFrame + 14);
-  const e = easeOutBack(p);
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        opacity: clamp(p * 3),
-        transform: `translateY(${interpolate(easeOut(p), [0, 1], [40, 0])}px) scale(${interpolate(e, [0, 1], [0.85, 1])})`,
-        color: color ?? COLORS.white,
-        marginRight: 24,
-        willChange: "transform, opacity",
-      }}
-    >
-      {word}
-    </span>
-  );
-};
+// Heavy blur to hide the text completely
+const BLUR = 10;
 
 // ─── Scene ────────────────────────────────────────────────────────────────────
 
@@ -182,43 +70,59 @@ export const Scene4: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // ── Cards pop in (frame 0–12) ─────────────────────────────────────────────
-  const popSpring = spring({
+  // ── Rects slide in (frames 0–22) ─────────────────────────────────────────
+  const slideSpring = spring({
     fps,
     frame,
-    config: { damping: 12, stiffness: 200, mass: 0.7 },
+    config: { damping: 16, stiffness: 160, mass: 0.9 },
+    durationInFrames: 24,
+  });
+
+  // Final resting positions (each rect measured from its own center, relative to canvas center)
+  // Left  rect: its right edge sits at -(GAP/2),  so center = -(RECT_W_L/2 + GAP/2)
+  // Right rect: its left  edge sits at +(GAP/2),  so center = +(RECT_W_R/2 + GAP/2)
+  const leftRestX  = -(RECT_W_L / 2 + GAP / 2);
+  const rightRestX =  (RECT_W_R / 2 + GAP / 2);
+
+  const leftX  = interpolate(slideSpring, [0, 1], [leftRestX  - SLIDE_DIST, leftRestX ]);
+  const rightX = interpolate(slideSpring, [0, 1], [rightRestX + SLIDE_DIST, rightRestX]);
+
+  const rectOpacity = interpolate(frame, [0, 8], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
+
+  // ── Stems grow (frames 18–30) ─────────────────────────────────────────────
+  const stemSpring = spring({
+    fps,
+    frame: Math.max(0, frame - 18),
+    config: { damping: 18, stiffness: 200, mass: 0.6 },
     durationInFrames: 16,
   });
-  const popScale = interpolate(popSpring, [0, 1], [0, 1]);
+  const stemScale = interpolate(stemSpring, [0, 1], [0, 1]);
 
-  // ── Fan open (frame 12–42) ────────────────────────────────────────────────
-  const fanSpring = spring({
+  // ── Circles pop in (frames 24–36) ─────────────────────────────────────────
+  const circleSpring = spring({
     fps,
-    frame: Math.max(0, frame - 12),
-    config: { damping: 14, stiffness: 100, mass: 1.0 },
-    durationInFrames: 36,
+    frame: Math.max(0, frame - 24),
+    config: { damping: 11, stiffness: 240, mass: 0.5 },
+    durationInFrames: 18,
   });
-  const fanDeg = interpolate(fanSpring, [0, 1], [0, FAN_DEG]);
+  const circleScale   = interpolate(easeOutBack(clamp(circleSpring)), [0, 1], [0, 1]);
+  const circleOpacity = interpolate(frame, [24, 30], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
 
-  // ── Blur dissolves as fan opens (reveal the text gradually) ──────────────
-  // Blur goes from 8px → 3.5px as fan opens, stays blurred but legible-ish
-  const blurAmount = interpolate(fanSpring, [0, 1], [8, 3.5]);
-
-  // ── Sentence words stagger in (frame 45 onward) ───────────────────────────
-  // "Two"(45) "properties"(52) "change"(59) "that."(66)
+  // ── Sentence words stagger in (frames 30–50) ──────────────────────────────
   const sentenceWords: { word: string; start: number; color?: string }[] = [
-    { word: "Two",         start: 45, color: COLORS.accentA  },
-    { word: "properties", start: 52                          },
-    { word: "change",     start: 59                          },
-    { word: "that.",      start: 66                          },
+    { word: "Two",        start: 30, color: COLORS.accentA },
+    { word: "properties", start: 36 },
+    { word: "change",     start: 42 },
+    { word: "that.",      start: 47 },
   ];
 
-  // ── Pivot dot pulse ───────────────────────────────────────────────────────
-  const dotScale = spring({
-    fps,
-    frame: Math.max(0, frame - 8),
-    config: { damping: 10, stiffness: 200 },
-    durationInFrames: 12,
+  // ── Full scene fade-out (frames 55–60) ────────────────────────────────────
+  const sceneFade = interpolate(frame, [55, 60], [1, 0], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
 
   return (
@@ -229,91 +133,204 @@ export const Scene4: React.FC = () => {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        opacity: sceneFade,
+        position: "relative",
+        left: -30, // Nudge left to visually center the composition (since the right rect is wider)
+        scale: 0.75, // Slight overall scale up to add energy and prevent black edges during fade-out
       }}
     >
-      {/* ── Fan pivot area ─────────────────────────────────────────────── */}
-      {/* This container is the anchor point. Cards extend upward from here. */}
+      {/* ─── Central layout block ─────────────────────────────────────────
+          We use a relative container whose center aligns with the canvas center.
+          Total height: circle(above) + stem + rect + stem + circle(below)
+          We'll overlap the sentence below this via marginBottom.
+      ───────────────────────────────────────────────────────────────────── */}
       <div
         style={{
           position: "relative",
-          width: CARD_W * 2,  // enough room for both rotated cards
-          height: CARD_H + 40,
-          marginBottom: 80,
+          width: RECT_W_L + RECT_W_R + GAP + CIRCLE_R * 4 + 40,
+          height: CIRCLE_R * 2 + STEM_H + RECT_H + STEM_H + CIRCLE_R * 2,
+          marginBottom: 60,
+          flexShrink: 0,
         }}
       >
-        {/* Shared pivot origin sits at horizontal center, vertical bottom */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: "50%",
-            height: CARD_H,
-            width: 0,
-          }}
-        >
-          {/* Left card — rotates negative (counter-clockwise) */}
-          <FanCard
-            side="left"
-            rotationDeg={-fanDeg}
-            popScale={popScale}
-            accentColor={COLORS.accentC}   // red — #FF7B72
-            number="1"
-            propertyText="@starting-style"
-            blurAmount={blurAmount}
-          />
+        {/* Helper — everything anchored to horizontal center of this container */}
+        {(() => {
+          const CW = RECT_W_L + RECT_W_R + GAP + CIRCLE_R * 4 + 40;
+          const cx = CW / 2;                           // horizontal center of container
+          const rectTop = CIRCLE_R * 2 + STEM_H;       // Y where rects sit
 
-          {/* Right card — rotates positive (clockwise) */}
-          <FanCard
-            side="right"
-            rotationDeg={fanDeg}
-            popScale={popScale}
-            accentColor={COLORS.accentA}   // green — #7EE787
-            number="2"
-            propertyText={`transition-behavior:\nallow-discrete`}
-            blurAmount={blurAmount}
-          />
-        </div>
+          return (
+            <>
+              {/* ══ LEFT RECT ══════════════════════════════════════════ */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: rectTop,
+                  left: cx + leftX - RECT_W_L / 2,
+                  width: RECT_W_L,
+                  height: RECT_H,
+                  borderRadius: 18,
+                  background: COLOR_L,
+                  boxShadow: `0 18px 50px rgba(0,0,0,0.55)`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: rectOpacity,
+                  overflow: "hidden",
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: FONTS.mono,
+                    fontSize: FONT_SIZE,
+                    fontWeight: 700,
+                    color: "rgba(0, 0, 0)", // Transparent color
+                    filter: `blur(${BLUR}px)`, // Heavily blurred to hide it
+                    whiteSpace: "nowrap",
+                    letterSpacing: "-0.01em",
+                    userSelect: "none",
+                  }}
+                >
+                  {TEXT_LEFT}
+                </span>
+              </div>
 
-        {/* Pivot dot — tiny indicator where the cards hinge */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: -6,
-            left: "50%",
-            transform: `translate(-50%, 0) scale(${dotScale})`,
-            width: 20,
-            height: 20,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.20)",
-            border: "1.5px solid rgba(255,255,255,0.35)",
-            zIndex: 10,
-          }}
-        />
-      </div>
+              {/* ══ RIGHT RECT ═════════════════════════════════════════ */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: rectTop,
+                  left: cx + rightX - RECT_W_R / 2,
+                  width: RECT_W_R,
+                  height: RECT_H,
+                  borderRadius: 18,
+                  background: COLOR_R,
+                  boxShadow: `0 18px 50px rgba(0,0,0,0.55)`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: rectOpacity,
+                  overflow: "hidden",
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: FONTS.mono,
+                    fontSize: FONT_SIZE,
+                    fontWeight: 700,
+                    color: "rgba(0, 0, 0)", // Transparent color
+                    filter: `blur(${BLUR}px)`, // Heavily blurred to hide it
+                    whiteSpace: "nowrap",
+                    letterSpacing: "-0.01em",
+                    userSelect: "none",
+                  }}
+                >
+                  {TEXT_RIGHT}
+                </span>
+              </div>
 
-      {/* ── "Two properties change that." ──────────────────────────────── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexWrap: "nowrap",
-          fontFamily: FONTS.display,
-          fontSize: 72,
-          fontWeight: 800,
-          letterSpacing: "-0.025em",
-          lineHeight: 1.1,
-        }}
-      >
-        {sentenceWords.map(({ word, start, color }) => (
-          <SentenceWord
-            key={word}
-            word={word}
-            frame={frame}
-            startFrame={start}
-            color={color}
-          />
-        ))}
+              {/* ══ STEM UP — from top of left rect ════════════════════ */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: cx + leftX - 2,
+                  top: rectTop - STEM_H,
+                  width: 4,
+                  height: STEM_H,
+                  borderRadius: 2,
+                  background: COLOR_L,
+                  opacity: rectOpacity,
+                  transform: `scaleY(${stemScale})`,
+                  transformOrigin: "bottom center",
+                }}
+              />
+
+              {/* ══ CIRCLE 01 — above left rect ════════════════════════ */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: cx + leftX - CIRCLE_R,
+                  top: rectTop - STEM_H - CIRCLE_R * 2,
+                  width: CIRCLE_R * 2,
+                  height: CIRCLE_R * 2,
+                  borderRadius: "50%",
+                  background: COLOR_L,
+                  boxShadow: `0 0 28px rgba(99, 102, 241, 0.4)`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: circleOpacity,
+                  transform: `scale(${circleScale})`,
+                  transformOrigin: "center bottom",
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: FONTS.mono,
+                    fontSize: 65,
+                    fontWeight: 800,
+                    color: "rgba(0, 0, 0)", // Transparent color
+                     // Blurred so it acts as an abstract design element
+                    letterSpacing: "-0.02em",
+                    lineHeight: 1,
+                  }}
+                >
+                  01
+                </span>
+              </div>
+
+              {/* ══ STEM DOWN — from bottom of right rect ══════════════ */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: cx + rightX - 2,
+                  top: rectTop + RECT_H,
+                  width: 4,
+                  height: STEM_H,
+                  borderRadius: 2,
+                  background: COLOR_R,
+                  opacity: rectOpacity,
+                  transform: `scaleY(${stemScale})`,
+                  transformOrigin: "top center",
+                }}
+              />
+
+              {/* ══ CIRCLE 02 — below right rect ═══════════════════════ */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: cx + rightX - CIRCLE_R,
+                  top: rectTop + RECT_H + STEM_H,
+                  width: CIRCLE_R * 2,
+                  height: CIRCLE_R * 2,
+                  borderRadius: "50%",
+                  background: COLOR_R,
+                  boxShadow: `0 0 28px rgba(236, 72, 153, 0.4)`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: circleOpacity,
+                  transform: `scale(${circleScale})`,
+                  transformOrigin: "center top",
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: FONTS.mono,
+                    fontSize: 65,
+                    fontWeight: 800,
+                    color: "rgba(0, 0, 0)", // Transparent color
+                     // Blurred so it acts as an abstract design element
+                    letterSpacing: "-0.02em",
+                    lineHeight: 1,
+                  }}
+                >
+                  02
+                </span>
+              </div>
+            </>
+          );
+        })()}
       </div>
     </AbsoluteFill>
   );
