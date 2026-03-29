@@ -465,14 +465,14 @@ export const Scene1: React.FC = () => {
   if (frame < 190) {
     nonHighlightDim = 1;
   } else if (frame < 205) {
-    nonHighlightDim = interpolate(frame, [190, 197], [1, 0.22], {
+    nonHighlightDim = interpolate(frame, [190, 195], [1, 0.1], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     });
   } else if (frame < 215) {
-    nonHighlightDim = 0.22;
+    nonHighlightDim = 0.1;
   } else {
-    nonHighlightDim = interpolate(frame, [215, 222], [0.22, 1], {
+    nonHighlightDim = interpolate(frame, [218, 222], [0.1, 1], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     });

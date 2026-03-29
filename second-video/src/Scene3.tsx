@@ -189,7 +189,7 @@ const CSS_LINE_DISPLAY: Token[] = [
 const CSS_LINE_TRANSITION: Token[] = [
   { text: "  transition", type: "property" },
   { text: ": ",           type: "punctuation" },
-  { text: "display",      type: "keyword" },
+  { text: "opacity",      type: "keyword" },
   { text: " 3s",          type: "value" },
   { text: " ease",        type: "value" },
   { text: ";",            type: "punctuation" },
