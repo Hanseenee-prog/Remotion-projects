@@ -78,7 +78,7 @@ export const DURATIONS = {
   s3: Math.round(8.4 * 30),  // 120f — "discrete values, display none→block"
   s4: Math.round(2.2 * 30),  //  75f — "So your animation never runs"
   s5: Math.round(8.5 * 30),  // 150f — "@starting-style" reveal
-  s6: Math.round(4.0 * 30),  // 120f — "transition-behavior: allow-discrete"
+  s6: Math.round(8.5 * 30),  // 120f — "transition-behavior: allow-discrete"
   s7: Math.round(5.0 * 30),  // 150f — Smooth card, "No JS. No hacks."
   s8: Math.round(2.5 * 30),  //  75f — Follow CTA
 } as const;
