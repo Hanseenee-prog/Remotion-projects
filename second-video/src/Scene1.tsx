@@ -604,7 +604,7 @@ export const Scene1: React.FC = () => {
             border: "2px solid rgba(255,255,255,0.08)",
             padding: "40px 48px",
             borderRadius: 24,
-            marginTop: 80,
+            marginTop: 120,
             display: isCardVisible ? "block" : "none",
             width: 620,
             boxShadow: "0 40px 80px rgba(0,0,0,0.6)",
