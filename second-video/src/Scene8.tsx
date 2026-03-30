@@ -1,270 +1,237 @@
-// Scene 8 — "Follow to discover more hidden tips like this."
-// 75 frames (2.5s) @ 30fps
+// Scene 8 — "Typing 'Avengers' quickly → only ONE API call at the end"
 //
-// ProfileCard lifted verbatim from Scene 7 (uploaded) — story ring, avatar,
-// name, handle, Follow button with interpolateColors + ripple + cursor click.
-// Glow reduced: card boxShadow blue glow 0.35→0.18 opacity cap.
-//
-// Timeline:
-//   0–20  : Card springs in (scale 0.7→1, opacity 0→1)
-//   10–24 : Cursor flies to Follow button
-//   24    : Click — button turns grey, ripple, cursor scale squish
-//   24–30 : Cursor fades out after click
-//   24–75 : Hold on "Following ✓" state
+// Visual: Search input types fast, single loading spinner then result card appears.
 
 import React from "react";
-import {
-  AbsoluteFill,
-  useCurrentFrame,
-  useVideoConfig,
-  interpolate,
-  interpolateColors,
-  spring,
-  staticFile,
-  Img,
-} from "remotion";
-import { COLORS, FONTS } from "./tokens";
+import { AbsoluteFill, useCurrentFrame, interpolate, spring, useVideoConfig } from "remotion";
+import { COLORS, FONTS, SAFE, CANVAS } from "./tokens";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function clamp(v: number, lo = 0, hi = 1) {
-  return Math.min(hi, Math.max(lo, v));
-}
-
-// ─── ProfileCard — verbatim from uploaded Scene7, glow reduced ────────────────
-
-const CARD_W      = 680;
-const CARD_H      = 730;
-const AVATAR_R    = 110;
-
-const ProfileCard: React.FC<{
-  cardScale: number;
-  cardOpacity: number;
-  isClicked: boolean;
-  colorSpring: number;
-  cursorX: number;
-  cursorY: number;
-  cursorClickScale: number;
-  rippleScale: number;
-  rippleOpacity: number;
-  showCursor: boolean;
-}> = ({
-  cardScale, cardOpacity, isClicked, colorSpring,
-  cursorX, cursorY, cursorClickScale, rippleScale, rippleOpacity, showCursor,
-}) => {
-  const btnBg    = interpolateColors(colorSpring, [0, 1], ["#0095F6", "#2A2A2A"]);
-  const btnTextC = interpolateColors(colorSpring, [0, 1], ["#FFFFFF", "#AAAAAA"]);
-  const btnText  = isClicked ? "Following ✓" : "Follow";
-  // Glow reduced: was 0.35, now 0.18
-  const glowOp   = interpolate(colorSpring, [0, 1], [0, 0.18]);
-
-  return (
-    <div style={{
-      width: CARD_W,
-      height: CARD_H,
-      opacity: cardOpacity,
-      transform: `scale(${cardScale})`,
-      transformOrigin: "center center",
-      zIndex: 50,
-    }}>
-      <div style={{
-        position: "relative",
-        width: "100%",
-        height: "100%",
-        background: "#121212",
-        borderRadius: 40,
-        border: "1.5px solid rgba(255,255,255,0.08)",
-        // Reduced glow: glowOp capped at 0.18 instead of 0.35
-        boxShadow: `0 40px 120px rgba(0,0,0,0.95), 0 0 60px rgba(0,149,246,${glowOp})`,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        paddingTop: 60,
-        overflow: "hidden",
-      }}>
-
-        {/* Story ring + avatar */}
-        <div style={{ position: "relative", marginBottom: 28 }}>
-          <div style={{
-            width: (AVATAR_R + 14) * 2,
-            height: (AVATAR_R + 14) * 2,
-            borderRadius: "50%",
-            background: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)",
-            padding: 5,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <div style={{
-              width: (AVATAR_R + 7) * 2,
-              height: (AVATAR_R + 7) * 2,
-              borderRadius: "50%",
-              background: "#121212",
-              padding: 5,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <div style={{
-                width: AVATAR_R * 2,
-                height: AVATAR_R * 2,
-                borderRadius: "50%",
-                overflow: "hidden",
-                background: "#333",
-              }}>
-                <Img
-                  src={staticFile("profile-img.jpg")}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 38%" }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Name */}
-        <div style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: 46, fontWeight: 800,
-          color: "#FFFFFF", letterSpacing: "0.01em", marginBottom: 10,
-        }}>
-          Hanson Emmanuel
-        </div>
-
-        {/* Handle */}
-        <div style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: 34, fontWeight: 500,
-          color: "rgba(255,255,255,0.55)",
-          marginBottom: 80,
-          letterSpacing: "0.02em",
-        }}>
-          @hee_codes
-        </div>
-
-        {/* Follow button */}
-        <div style={{ position: "relative" }}>
-          <div style={{
-            backgroundColor: btnBg,
-            color: btnTextC,
-            width: 400, height: 110,
-            borderRadius: 20,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 40, fontWeight: 700,
-            fontFamily: "'JetBrains Mono', monospace",
-            letterSpacing: "0.04em",
-            boxShadow: isClicked
-              ? "0 4px 20px rgba(0,0,0,0.5)"
-              : "0 12px 40px rgba(0,149,246,0.5)",
-            position: "relative", overflow: "hidden",
-            border: isClicked ? "2px solid rgba(255,255,255,0.08)" : "none",
-          }}>
-            {isClicked && (
-              <div style={{
-                position: "absolute",
-                width: 120, height: 120,
-                backgroundColor: "rgba(255,255,255,0.7)",
-                borderRadius: "50%",
-                transform: `scale(${rippleScale})`,
-                opacity: rippleOpacity,
-                pointerEvents: "none",
-                zIndex: 0,
-              }} />
-            )}
-            <span style={{ zIndex: 1 }}>{btnText}</span>
-          </div>
-
-          {/* Cursor */}
-          {showCursor && (
-            <div style={{
-              position: "absolute",
-              left: "50%", top: "50%",
-              transform: `translate(${cursorX}px, ${cursorY}px) scale(${cursorClickScale})`,
-              zIndex: 20,
-              fontSize: 90, lineHeight: 1,
-              filter: "drop-shadow(0px 12px 12px rgba(0,0,0,0.5))",
-              rotate: "-10deg",
-            }}>
-              👆
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+const easeOutBack = (t: number) => {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 };
+function fadeUp(frame: number, start: number, dur = 18, dist = 30) {
+  const t = Math.min(Math.max((frame - start) / dur, 0), 1);
+  const e = easeOut(t);
+  return { opacity: e, transform: `translateY(${(1 - e) * dist}px)` };
+}
+function clamp(v: number, lo = 0, hi = 1) { return Math.min(Math.max(v, lo), hi); }
 
-// ─── Scene ────────────────────────────────────────────────────────────────────
+const WORD = "Avengers";
+const CHAR_INTERVAL = 7;  // fast typing
+const TYPE_START    = 30;
 
 export const Scene8: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const CURSOR_IN = 10;
-  const CLICK_AT  = 24;
-
-  // ── Card springs in (frame 0–20) ─────────────────────────────────────────
-  const cardInSpring = spring({
-    fps, frame,
-    config: { damping: 14, stiffness: 130, mass: 0.9 },
-    durationInFrames: 20,
-  });
-  const cardScale   = interpolate(clamp(cardInSpring), [0, 1], [0.7, 1]);
-  const cardOpacity = interpolate(frame, [0, 10], [0, 1], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
-  });
-
-  // ── Cursor flies to Follow button (frames 10–24) ──────────────────────────
-  const cursorMoveSpring = spring({
-    fps, frame: frame - CURSOR_IN,
-    config: { damping: 14, stiffness: 100 },
-  });
-  // Same relative offset pattern as uploaded Scene7 exactly
-  const cursorX = interpolate(clamp(cursorMoveSpring), [0, 1], [380, 0]);
-  const cursorY = interpolate(clamp(cursorMoveSpring), [0, 1], [600, 40]);
-
-  // ── Click (frame 24) ──────────────────────────────────────────────────────
-  const isClicked = frame >= CLICK_AT;
-
-  const colorSpringRaw = spring({
-    fps, frame: frame - CLICK_AT,
-    config: { damping: 20, stiffness: 120 },
-  });
-  const colorSpring = clamp(isClicked ? colorSpringRaw : 0);
-
-  const cursorPressSpring = spring({
-    fps, frame: frame - CLICK_AT,
-    config: { damping: 12, stiffness: 300, mass: 0.5 },
-  });
-  const cursorClickScale = interpolate(
-    cursorPressSpring, [0, 0.5, 1], [1, 0.75, 1],
-    { extrapolateRight: "clamp" }
+  const charsTyped = Math.min(
+    Math.floor(Math.max(frame - TYPE_START, 0) / CHAR_INTERVAL),
+    WORD.length
   );
+  const typedText   = WORD.slice(0, charsTyped);
+  const doneTyping  = charsTyped >= WORD.length;
 
-  const rippleSpring  = spring({ fps, frame: frame - CLICK_AT, config: { damping: 20, stiffness: 60 } });
-  const rippleScale   = clamp(rippleSpring) * 5;
-  const rippleOpacity = interpolate(clamp(rippleSpring), [0, 1], [0.6, 0]);
+  // Debounce fires 1s (30 frames) after last keystroke
+  const DEBOUNCE_FRAME = TYPE_START + WORD.length * CHAR_INTERVAL + 30;
+  const loadingStart   = DEBOUNCE_FRAME;
+  const resultStart    = DEBOUNCE_FRAME + 25;
 
-  // Cursor visible during move, fades out after click (frame 24–32)
-  const cursorFadeAfterClick = interpolate(frame, [CLICK_AT, CLICK_AT + 8], [1, 0], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  const showLoading = frame >= loadingStart && frame < resultStart;
+  const showResult  = frame >= resultStart;
+
+  // Spinner rotation
+  const spinnerRot = ((frame - loadingStart) * 12) % 360;
+
+  // Result card springs in
+  const resultSpring = spring({
+    fps,
+    frame: Math.max(0, frame - resultStart),
+    config: { damping: 14, stiffness: 160 },
   });
-  const showCursor = frame >= CURSOR_IN && cursorFadeAfterClick > 0;
+  const resultScale   = interpolate(resultSpring, [0, 1], [0.85, 1]);
+  const resultOpacity = interpolate(resultSpring, [0, 1], [0, 1]);
+
+  // "Only 1 call" badge
+  const badgeSpring = spring({
+    fps,
+    frame: Math.max(0, frame - (resultStart + 10)),
+    config: { damping: 12, stiffness: 200 },
+  });
 
   return (
     <AbsoluteFill style={{
-      background: "transparent",
       display: "flex",
+      flexDirection: "column",
       alignItems: "center",
-      justifyContent: "center",
+      paddingTop: SAFE.top + 80,
+      paddingLeft: SAFE.left + 20,
+      paddingRight: SAFE.right + 20,
     }}>
-      <ProfileCard
-        cardScale={cardScale}
-        cardOpacity={cardOpacity}
-        isClicked={isClicked}
-        colorSpring={colorSpring}
-        cursorX={cursorX}
-        cursorY={cursorY}
-        cursorClickScale={cursorClickScale}
-        rippleScale={rippleScale}
-        rippleOpacity={rippleOpacity}
-        showCursor={showCursor}
-      />
+
+      {/* Headline */}
+      <div style={{ width: "100%", maxWidth: CANVAS.safeWidth, marginBottom: 64 }}>
+        {[
+          { text: "Typing fast?",          start: 0  },
+          { text: "Only 1 API call",       start: 8, accent: COLORS.accentA },
+          { text: "at the end.",           start: 16 },
+        ].map(({ text, start, accent }, i) => (
+          <div key={i} style={{
+            ...fadeUp(frame, start, 16),
+            fontFamily: FONTS.display,
+            fontSize: 66,
+            fontWeight: 800,
+            color: accent ?? COLORS.white,
+            lineHeight: 1.2,
+            letterSpacing: "-0.02em",
+          }}>
+            {text}
+          </div>
+        ))}
+      </div>
+
+      {/* Search input */}
+      <div style={{
+        ...fadeUp(frame, 20, 16),
+        width: "100%",
+        maxWidth: CANVAS.safeWidth,
+        marginBottom: 36,
+      }}>
+        <div style={{
+          background: COLORS.codeBg,
+          border: `2px solid ${doneTyping ? COLORS.accentA : COLORS.accentB}`,
+          borderRadius: 16,
+          padding: "28px 36px",
+          display: "flex",
+          alignItems: "center",
+          gap: 16,
+          boxShadow: doneTyping
+            ? `0 0 40px ${COLORS.accentA}28`
+            : `0 0 24px ${COLORS.accentB}18`,
+        }}>
+          <span style={{ fontSize: 32 }}>🔍</span>
+          <span style={{ fontFamily: FONTS.mono, fontSize: 40, fontWeight: 700, color: COLORS.codeText }}>
+            {typedText}
+            {!doneTyping && (
+              <span style={{
+                display: "inline-block", width: 3, height: "0.82em",
+                background: COLORS.accentB, marginLeft: 4,
+                verticalAlign: "middle",
+                opacity: Math.floor(frame / 6) % 2 === 0 ? 1 : 0,
+              }} />
+            )}
+          </span>
+          {doneTyping && (
+            <span style={{
+              marginLeft: "auto", fontFamily: FONTS.mono,
+              fontSize: 22, color: COLORS.accentA,
+            }}>
+              debounced ✓
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Loading spinner */}
+      {showLoading && (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 20,
+          padding: "20px 32px",
+          borderRadius: 14,
+          background: COLORS.surface,
+          marginBottom: 24,
+        }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            border: `4px solid ${COLORS.accentB}33`,
+            borderTop: `4px solid ${COLORS.accentB}`,
+            transform: `rotate(${spinnerRot}deg)`,
+          }} />
+          <span style={{ fontFamily: FONTS.mono, fontSize: 26, color: COLORS.muted }}>
+            GET /movies?q=Avengers
+          </span>
+        </div>
+      )}
+
+      {/* Result card */}
+      {showResult && (
+        <div style={{
+          width: "100%",
+          maxWidth: CANVAS.safeWidth,
+          opacity: resultOpacity,
+          transform: `scale(${resultScale})`,
+        }}>
+          {/* Single call badge */}
+          <div style={{
+            transform: `scale(${badgeSpring})`,
+            transformOrigin: "center",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "14px 28px",
+            borderRadius: 100,
+            background: `${COLORS.accentA}18`,
+            border: `2px solid ${COLORS.accentA}66`,
+            marginBottom: 24,
+            boxShadow: `0 0 30px ${COLORS.accentA}22`,
+          }}>
+            <span style={{ fontSize: 28 }}>✅</span>
+            <span style={{ fontFamily: FONTS.display, fontSize: 28, fontWeight: 700, color: COLORS.accentA }}>
+              1 API call total
+            </span>
+          </div>
+
+          {/* Fake movie result */}
+          <div style={{
+            background: COLORS.codeBg,
+            border: `1.5px solid ${COLORS.border}`,
+            borderRadius: 20,
+            padding: "32px 36px",
+            display: "flex",
+            gap: 24,
+            alignItems: "flex-start",
+          }}>
+            <div style={{
+              width: 80,
+              height: 110,
+              borderRadius: 10,
+              background: "linear-gradient(135deg, #3B1F6B, #6B4FBB)",
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 36,
+            }}>
+              🦸
+            </div>
+            <div>
+              <div style={{ fontFamily: FONTS.display, fontSize: 34, fontWeight: 800, color: COLORS.white, marginBottom: 8 }}>
+                Avengers: Endgame
+              </div>
+              <div style={{ fontFamily: FONTS.display, fontSize: 24, color: COLORS.muted, marginBottom: 16, lineHeight: 1.5 }}>
+                2019 · Action · ⭐ 8.4
+              </div>
+              <div style={{
+                display: "inline-flex",
+                padding: "8px 16px",
+                borderRadius: 8,
+                background: `${COLORS.accentA}18`,
+                fontFamily: FONTS.mono,
+                fontSize: 20,
+                color: COLORS.accentA,
+              }}>
+                Result from 1 debounced call
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </AbsoluteFill>
   );
 };

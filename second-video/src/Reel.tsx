@@ -9,21 +9,17 @@ import { Scene5 } from "./Scene5";
 import { Scene6 } from "./Scene6";
 import { Scene7 } from "./Scene7";
 import { Scene8 } from "./Scene8";
+import { Scene9 } from "./Scene9";
 export { TOTAL_FRAMES };
 
-// ─── Shared Background ────────────────────────────────────────────────────────
+// ─── Shared background ────────────────────────────────────────────────────────
 export const ReelBackground: React.FC = () => (
   <AbsoluteFill>
     <AbsoluteFill style={{ backgroundColor: "#0D0D0D" }} />
     <AbsoluteFill>
       <Img
         src={staticFile("bg-image.jpg")}
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          opacity: 0.4,
-        }}
+        style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.4 }}
       />
     </AbsoluteFill>
     <AbsoluteFill
@@ -38,44 +34,21 @@ export const ReelBackground: React.FC = () => (
 // ─── Main Reel ────────────────────────────────────────────────────────────────
 export const Reel: React.FC = () => (
   <AbsoluteFill
-    style={{
-      backgroundColor: COLORS.bg,
-      overflow: "hidden",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-    }}
+    style={{ backgroundColor: COLORS.bg, overflow: "hidden" }}
   >
-    {/* Always-on layers */}
     <ReelBackground />
-    <Audio src={staticFile("voiceover-3.mp3")} />
+    <Audio src={staticFile("voiceover-debounce.mp3")} />
 
-    {/* Scene series */}
     <Series>
-      <Series.Sequence durationInFrames={DURATIONS.s1}>
-        <Scene1 />
-      </Series.Sequence>
-      <Series.Sequence durationInFrames={DURATIONS.s2}>
-        <Scene2 />
-      </Series.Sequence>
-      <Series.Sequence durationInFrames={DURATIONS.s3}>
-        <Scene3 />
-      </Series.Sequence>
-      <Series.Sequence durationInFrames={DURATIONS.s4}>
-        <Scene4 />
-      </Series.Sequence>
-      <Series.Sequence durationInFrames={DURATIONS.s5}>
-        <Scene5 />
-      </Series.Sequence>
-      <Series.Sequence durationInFrames={DURATIONS.s6}>
-        <Scene6 />
-      </Series.Sequence>
-      <Series.Sequence durationInFrames={DURATIONS.s7}>
-        <Scene7 />
-      </Series.Sequence>
-      <Series.Sequence durationInFrames={DURATIONS.s8}>
-        <Scene8 />
-      </Series.Sequence>
+      <Series.Sequence durationInFrames={DURATIONS.s1}><Scene1 /></Series.Sequence>
+      <Series.Sequence durationInFrames={DURATIONS.s2}><Scene2 /></Series.Sequence>
+      <Series.Sequence durationInFrames={DURATIONS.s3}><Scene3 /></Series.Sequence>
+      <Series.Sequence durationInFrames={DURATIONS.s4}><Scene4 /></Series.Sequence>
+      <Series.Sequence durationInFrames={DURATIONS.s5}><Scene5 /></Series.Sequence>
+      <Series.Sequence durationInFrames={DURATIONS.s6}><Scene6 /></Series.Sequence>
+      <Series.Sequence durationInFrames={DURATIONS.s7}><Scene7 /></Series.Sequence>
+      <Series.Sequence durationInFrames={DURATIONS.s8}><Scene8 /></Series.Sequence>
+      <Series.Sequence durationInFrames={DURATIONS.s9}><Scene9 /></Series.Sequence>
     </Series>
   </AbsoluteFill>
 );

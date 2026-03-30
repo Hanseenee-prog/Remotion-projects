@@ -1,356 +1,194 @@
-// Scene 2 — Refined Layout
-// Total duration: 155 frames
+// Scene 2 — "But imagine hitting a movie API for each letter… your app slows down fast"
+//
+// Visual: API endpoint URL, rapid fire requests shown as stacked cards/pills,
+// a latency/slowness meter grows red. Keyboard input shown at top.
 
 import React from "react";
-import {
-  AbsoluteFill,
-  useCurrentFrame,
-  interpolate,
-  spring,
-  useVideoConfig,
-} from "remotion";
-import { COLORS, FONTS } from "./tokens";
+import { AbsoluteFill, useCurrentFrame, interpolate, spring, useVideoConfig } from "remotion";
+import { COLORS, FONTS, SAFE, CANVAS } from "./tokens";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const RED_ACCENT = "#FF5F57"; // Vibrant Red
-const VIBRANT_BLUE = "#38BDF8"; // Punchy Sky Blue
-
-// ─── Typed text helper ────────────────────────────────────────────────────────
-function useTyped(text: string, startFrame: number, cps: number, frame: number) {
-  const chars = Math.max(0, Math.floor(((frame - startFrame) / 30) * cps));
-  return text.slice(0, Math.min(chars, text.length));
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+function fadeUp(frame: number, start: number, dur = 18, dist = 30) {
+  const t = Math.min(Math.max((frame - start) / dur, 0), 1);
+  const e = easeOut(t);
+  return { opacity: e, transform: `translateY(${(1 - e) * dist}px)` };
 }
+function clamp(v: number, lo = 0, hi = 1) { return Math.min(Math.max(v, lo), hi); }
 
-// ─── State Card Component ─────────────────────────────────────────────────────
-// cardScale is applied to the OUTER wrapper so the layout anchor (translateX)
-// always points to the true visual centre of the card, keeping dots aligned.
-const StateCard: React.FC<{
-  prop: string;   // e.g. "scale:"
-  value: string;  // e.g. "0.5"
-  sublabel: string;
-  accent: string;
-  showText: boolean;
-  elementsOpacity: number;
-  cardScale?: number;
-  zIndex?: number;
-}> = ({ prop, value, sublabel, accent, showText, elementsOpacity, cardScale = 1, zIndex = 10 }) => {
-  const textOpacity = showText ? elementsOpacity : 0;
+const LETTERS = ["A", "v", "e", "n", "g", "e", "r", "s"];
+const CALL_INTERVAL = 15; // frames between each call appearing
+const CALLS_START   = 20;
+
+// Each API request pill
+const ApiPill: React.FC<{ letter: string; query: string; index: number; frame: number; startF: number }> = ({
+  letter, query, index, frame, startF,
+}) => {
+  const age = frame - startF;
+  const inP = clamp(age / 10);
+  const e   = easeOut(inP);
+
+  // Pills drift up slowly and fade after a while
+  const driftY  = age * 0.6;
+  const opacity = e * (age > 80 ? Math.max(0, 1 - (age - 80) / 30) : 1);
+
+  const hue = index * 22; // spread colours across the spectrum
+  const col = `hsl(${200 + hue}, 80%, 65%)`;
 
   return (
     <div style={{
+      position: "absolute",
+      left: "50%",
+      top: "50%",
+      transform: `translate(-50%, ${-driftY - index * 70}px) scale(${e})`,
+      opacity,
       display: "flex",
-      flexDirection: "column",
       alignItems: "center",
-      zIndex,
-      // Scale the whole thing — layout origin stays at the translateX anchor
-      transform: `scale(${cardScale})`,
-      transformOrigin: "center center",
+      gap: 16,
+      padding: "16px 28px",
+      borderRadius: 12,
+      background: COLORS.codeBg,
+      border: `1.5px solid rgba(255,255,255,0.12)`,
+      whiteSpace: "nowrap",
+      width: 700,
     }}>
-      <div
-        style={{
-          width: 220,
-          height: 280,
-          borderRadius: 20,
-          background: COLORS.codeBg,
-          border: `3px solid ${accent}`,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          boxShadow: `0 24px 48px rgba(0,0,0,0.5)`,
-          position: "relative",
-          gap: 6,
-        }}
-      >
-        {/* Property label */}
-        <div style={{
-          opacity: textOpacity,
-          fontFamily: FONTS.mono,
-          fontSize: 28,
-          fontWeight: 700,
-          color: COLORS.punctuation,
-          transition: "opacity 0.3s ease",
-        }}>
-          {prop}
-        </div>
-        {/* Value — bigger than the prop */}
-        <div style={{
-          opacity: textOpacity,
-          fontFamily: FONTS.mono,
-          fontSize: 48,
-          fontWeight: 800,
-          color: COLORS.punctuation,
-          transition: "opacity 0.3s ease",
-          lineHeight: 1,
-        }}>
-          {value}
-        </div>
-      </div>
-
-      <div style={{
-        opacity: textOpacity,
-        marginTop: 24,
-        fontFamily: FONTS.mono,
-        fontSize: 28,
-        fontWeight: 800,
-        color: accent,
-        textTransform: "uppercase",
-        letterSpacing: "0.1em",
-        transition: "opacity 0.3s ease",
-      }}>
-        {sublabel}
-      </div>
+      <span style={{ fontFamily: FONTS.mono, fontSize: 24, color: COLORS.accentC }}>GET</span>
+      <span style={{ fontFamily: FONTS.mono, fontSize: 24, color: COLORS.muted }}>/movies?q=</span>
+      <span style={{ fontFamily: FONTS.mono, fontSize: 24, color: COLORS.accentB, fontWeight: 700 }}>
+        {query}
+      </span>
+      {/* Spinner */}
+      <span style={{ marginLeft: "auto", fontSize: 22, opacity: 0.7 }}>⏳</span>
     </div>
   );
 };
-
-// ─── Inline syntax-highlighted token ─────────────────────────────────────────
-const T: React.FC<{ children: React.ReactNode; color: string }> = ({ children, color }) => (
-  <span style={{ color, fontFamily: FONTS.mono, whiteSpace: "pre" }}>{children}</span>
-);
 
 export const Scene2: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // 1. Entrances
-  const boxesPop = spring({
-    frame,
-    fps,
-    config: { damping: 12, stiffness: 150 },
-  });
+  const callsVisible = Math.min(
+    Math.floor(Math.max(frame - CALLS_START, 0) / CALL_INTERVAL),
+    LETTERS.length
+  );
 
-  // 2. Spread Logic
-  const moveApart = spring({
-    frame: frame - 30,
-    fps,
-    config: { damping: 20, stiffness: 80 },
-  });
-  const spread = interpolate(moveApart, [0, 1], [0, 330]);
-
-  // 3. Line Visibility
-  const lineOpacity = interpolate(frame, [35, 50], [0, 0.6], { extrapolateRight: "clamp" });
-  const lineScale = interpolate(frame, [40, 70], [0, 1], { extrapolateRight: "clamp" });
-
-  // 4. Content Timings
-  const textVisible = frame > 85;
-  const calloutIn = spring({ frame: frame - 40, fps });
-
-  // 5. In-between callout appears
-  const calloutOpacity = interpolate(frame, [40, 60], [0, 1], { extrapolateRight: "clamp" });
-  const calloutY = interpolate(frame, [40, 60], [20, 0], { extrapolateRight: "clamp" });
-
-  // 6. Elements Fade Out (Frames 150-155) - Only affects text, dots, and callout
-  const elementsFadeOut = interpolate(frame, [150, 155], [1, 0], { extrapolateLeft: "clamp" });
-
-  // 7. FULL SCENE fade-out — last 5 frames (150–155)
-  const sceneFadeOut = interpolate(frame, [150, 155], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // ── Typed "transition: scale 3s;" — starts at frame 15, above cards
-  const TYPED_TEXT = "transition: scale 3s;";
-  const typedStr = useTyped(TYPED_TEXT, 15, 42, frame);
-  const typedOpacity = interpolate(frame, [15, 22], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const typedFinalOpacity = typedOpacity * elementsFadeOut;
-
-  // ── Dot values
-  const dotValues = [
-    { scaleVal: "0.67", timeVal: "1s",   pos: -0.6, delay: 65 },
-    { scaleVal: "0.75", timeVal: "1.5s", pos: -0.15,    delay: 70 },
-    { scaleVal: "0.83", timeVal: "2s",   pos: 0.3,  delay: 75 },
-  ];
+  // Slowdown meter (grows as calls accumulate)
+  const meterFill = clamp(callsVisible / LETTERS.length);
+  const meterColor = meterFill < 0.5 ? COLORS.accentA : meterFill < 0.75 ? "#F0C674" : COLORS.accentC;
 
   return (
-    // ── Master opacity wrapper — fades the entire scene in the last 5 frames
     <AbsoluteFill style={{
-      background: "transparent",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      justifyContent: "center",
-      opacity: sceneFadeOut,
+      paddingTop: SAFE.top + 80,
+      paddingLeft: SAFE.left + 20,
+      paddingRight: SAFE.right + 20,
     }}>
 
-      {/* ── Typed "transition: scale 3s;" above the cards ── */}
+      {/* Headline */}
+      <div style={{ width: "100%", maxWidth: CANVAS.safeWidth, marginBottom: 60 }}>
+        {[
+          { text: "Every letter hits",     start: 0  },
+          { text: "the movie API.",        start: 8  },
+          { text: "Your app slows down.",  start: 16, accent: true },
+        ].map(({ text, start, accent }, i) => (
+          <div key={i} style={{
+            ...fadeUp(frame, start, 16),
+            fontFamily: FONTS.display,
+            fontSize: 64,
+            fontWeight: 800,
+            color: accent ? COLORS.accentC : COLORS.white,
+            lineHeight: 1.2,
+            letterSpacing: "-0.02em",
+          }}>
+            {text}
+          </div>
+        ))}
+      </div>
+
+      {/* API calls container */}
       <div style={{
-        opacity: typedFinalOpacity,
+        ...fadeUp(frame, 16, 16),
+        width: "100%",
+        maxWidth: CANVAS.safeWidth,
+        position: "relative",
+        height: 520,
         marginBottom: 48,
-        fontSize: 44,
-        fontWeight: 700,
-        letterSpacing: "0.01em",
-        lineHeight: 1,
-        display: "flex",
-        alignItems: "center",
       }}>
-        {(() => {
-          const tokens: Array<{ text: string; color: string }> = [
-            { text: "transition", color: COLORS.property },
-            { text: ": ",         color: COLORS.punctuation },
-            { text: "scale",      color: COLORS.keyword },
-            { text: " 3s",        color: COLORS.value },
-            { text: ";",          color: COLORS.punctuation },
-          ];
-          let charsLeft = typedStr.length;
-          return tokens.map((tok, i) => {
-            if (charsLeft <= 0) return null;
-            const show = tok.text.slice(0, charsLeft);
-            charsLeft -= tok.text.length;
-            return <T key={i} color={tok.color}>{show}</T>;
-          });
-        })()}
-        {/* Blinking cursor while typing */}
-        {typedStr.length < TYPED_TEXT.length && (
-          <span style={{
-            display: "inline-block",
-            width: 3,
-            height: "0.82em",
-            background: COLORS.accentA,
-            marginLeft: 3,
-            verticalAlign: "middle",
-            opacity: Math.floor(frame / 7) % 2 === 0 ? 1 : 0,
-          }} />
+        {Array.from({ length: callsVisible }).map((_, i) => {
+          const startF = CALLS_START + i * CALL_INTERVAL;
+          return (
+            <ApiPill
+              key={i}
+              letter={LETTERS[i]}
+              query={"Avengers".slice(0, i + 1)}
+              index={callsVisible - 1 - i}
+              frame={frame}
+              startF={startF}
+            />
+          );
+        })}
+
+        {callsVisible === 0 && (
+          <div style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%,-50%)",
+            fontFamily: FONTS.mono,
+            fontSize: 26,
+            color: COLORS.subtle,
+          }}>
+            start typing to see API calls…
+          </div>
         )}
       </div>
 
-      {/* ── Visual Timeline Area ── */}
+      {/* Slowness meter */}
       <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        position: "relative",
+        ...fadeUp(frame, 18, 14),
         width: "100%",
-        height: 400,
+        maxWidth: CANVAS.safeWidth,
       }}>
-
-        {/* The Horizontal Line (Doesn't fade out here) */}
         <div style={{
-          position: "absolute",
-          width: spread * 2,
-          height: 8,
-          background: "white",
-          opacity: lineOpacity,
-          transform: `scaleX(${lineScale})`,
-          transformOrigin: "center",
-          zIndex: 1,
-          borderRadius: 4,
-          top: 165,
-        }} />
-
-        {/* Left Box — visually small (scale: 0.5) */}
-        <div style={{ position: "absolute", transform: `translateX(${-spread}px) scale(${boxesPop})`, zIndex: 10 }}>
-          <StateCard
-            prop="scale:"
-            value="0.5"
-            sublabel="before"
-            accent={RED_ACCENT}
-            showText={textVisible}
-            elementsOpacity={elementsFadeOut}
-            cardScale={0.5}
-          />
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 10,
+          fontFamily: FONTS.mono,
+          fontSize: 24,
+          color: COLORS.muted,
+        }}>
+          <span>App speed</span>
+          <span style={{ color: meterColor }}>
+            {callsVisible === 0 ? "normal" : callsVisible < 4 ? "slowing…" : callsVisible < 7 ? "slow 🐢" : "very slow 🔴"}
+          </span>
         </div>
-
-        {/* Intermediate Dots (Fades out) */}
-        <div style={{ opacity: elementsFadeOut }}>
-          {dotValues.map((d) => {
-            const pop = spring({
-              frame: frame - d.delay,
-              fps,
-              config: { stiffness: 200, damping: 12 },
-            });
-
-            return (
-              <div key={d.scaleVal} style={{
-                position: "absolute",
-                transform: `translateX(${spread * d.pos}px) scale(${pop})`,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                zIndex: 5,
-                top: 165,
-                marginTop: -12,
-              }}>
-                {/* Time label ABOVE the dot — close to it */}
-                <div style={{
-                  position: "absolute",
-                  bottom: 36,
-                  fontSize: 28,
-                  fontWeight: 700,
-                  color: COLORS.offWhite,
-                  fontFamily: FONTS.mono,
-                  whiteSpace: "nowrap",
-                }}>
-                  {d.timeVal}
-                </div>
-
-                {/* The dot */}
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: VIBRANT_BLUE }} />
-
-                {/* Scale value BELOW the dot */}
-                <div style={{
-                  position: "absolute",
-                  top: 40,
-                  fontSize: 28,
-                  fontWeight: 800,
-                  color: VIBRANT_BLUE,
-                  fontFamily: FONTS.mono,
-                  whiteSpace: "nowrap",
-                }}>
-                  {d.scaleVal}
-                </div>
-              </div>
-            );
-          })}
+        <div style={{
+          width: "100%",
+          height: 18,
+          borderRadius: 9,
+          background: COLORS.surface,
+          overflow: "hidden",
+        }}>
+          <div style={{
+            height: "100%",
+            width: `${meterFill * 100}%`,
+            background: meterColor,
+            borderRadius: 9,
+            boxShadow: `0 0 16px ${meterColor}88`,
+          }} />
         </div>
-
-        {/* Right Box — visually bigger (scale: 1.0) */}
-        <div style={{ position: "absolute", transform: `translateX(${spread}px) scale(${boxesPop})`, zIndex: 10 }}>
-          <StateCard
-            prop="scale:"
-            value="1.0"
-            sublabel="after"
-            accent={COLORS.selector}
-            showText={textVisible}
-            elementsOpacity={elementsFadeOut}
-            cardScale={1.0}
-          />
+        <div style={{
+          marginTop: 16,
+          fontFamily: FONTS.mono,
+          fontSize: 28,
+          fontWeight: 700,
+          color: COLORS.accentC,
+          opacity: callsVisible >= 6 ? 1 : 0,
+          textAlign: "center",
+        }}>
+          {callsVisible} API calls for 1 search!
         </div>
-
-      </div>
-
-      {/* ── "in-between" Callout (Fades out) ── */}
-      <div
-        style={{
-          marginTop: 60,
-          padding: "16px 36px",
-          borderRadius: 100,
-          background: "rgba(126,231,135,0.08)",
-          border: `1px solid ${COLORS.accentA}33`,
-          opacity: calloutOpacity * elementsFadeOut,
-          transform: `translateY(${calloutY}px)`,
-        }}
-      >
-        <span
-          style={{
-            fontFamily: FONTS.display,
-            fontSize: 28,
-            fontWeight: 600,
-            color: COLORS.accentA,
-          }}
-        >
-          <span
-            style={{
-              letterSpacing: "0em",
-            }}
-          >CSS </span> 
-          <span style={{
-            letterSpacing: "0.02em",
-          }}>animates between states</span>
-        </span>
       </div>
 
     </AbsoluteFill>

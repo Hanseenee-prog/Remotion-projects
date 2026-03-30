@@ -1,337 +1,199 @@
-// Scene 4 — "Two properties change that."
+// Scene 4 — "Here's how we build it — debounce(callback, delay)"
 //
-// Layout (matches sketch):
-//   Two rectangles slide in from left/right, meet at center with a small gap.
-//   Width of each rect is proportional to its text content.
-//   Text inside each rect is blurred.
-//   After rects settle (~frame 20):
-//     — Stem grows UP   from left  rect center → circle "01" pops at top
-//     — Stem grows DOWN from right rect center → circle "02" pops at bottom
-//   Sentence "Two properties change that." rises in word by word (~frame 30)
-//   Hold, then full scene fades out frames 55–60.
-//
-// Total: 60 frames @ 30fps = 2 seconds
+// Visual: Code window. "function debounce(callback, delay) {" types in.
+// Then parameter annotations appear below explaining callback and delay.
 
 import React from "react";
-import {
-  AbsoluteFill,
-  useCurrentFrame,
-  useVideoConfig,
-  interpolate,
-  spring,
-} from "remotion";
-import { COLORS, FONTS } from "./tokens";
+import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
+import { COLORS, FONTS, SAFE, CANVAS } from "./tokens";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function clamp(v: number, lo = 0, hi = 1) {
-  return Math.min(Math.max(v, lo), hi);
-}
-function prog(frame: number, start: number, end: number) {
-  return clamp((frame - start) / (end - start));
-}
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-const easeOutBack = (t: number) => {
-  const c1 = 1.70158, c3 = c1 + 1;
-  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
-};
+function fadeUp(frame: number, start: number, dur = 18, dist = 30) {
+  const t = Math.min(Math.max((frame - start) / dur, 0), 1);
+  const e = easeOut(t);
+  return { opacity: e, transform: `translateY(${(1 - e) * dist}px)` };
+}
+function clamp(v: number, lo = 0, hi = 1) { return Math.min(Math.max(v, lo), hi); }
 
-// ─── Layout constants ─────────────────────────────────────────────────────────
+// Typed line helper
+function useTyped(text: string, startF: number, endF: number, frame: number) {
+  const p = clamp((frame - startF) / (endF - startF));
+  return text.slice(0, Math.floor(p * text.length));
+}
 
-const RECT_H       = 116;    // rectangle height
-const RECT_PAD_X   = 56;     // horizontal padding inside each rect
-const GAP          = 35;     // gap between the two rects at rest
-const FONT_SIZE    = 48;     // property text font size
-const CHAR_W       = 0.575;  // JetBrains Mono approx width ratio at this size
+// Syntax token
+const T: React.FC<{ c: string; children: React.ReactNode }> = ({ c, children }) => (
+  <span style={{ color: c, fontFamily: FONTS.mono, whiteSpace: "pre" }}>{children}</span>
+);
 
-// Compute widths from text — so each rect hugs its content
-const TEXT_LEFT    = "@starting-style";
-const TEXT_RIGHT   = "transition-behavior";
-const RECT_W_L     = Math.ceil(TEXT_LEFT.length  * FONT_SIZE * CHAR_W) + RECT_PAD_X * 2;
-const RECT_W_R     = Math.ceil(TEXT_RIGHT.length * FONT_SIZE * CHAR_W) + RECT_PAD_X * 2;
+const FONT = 38;
+const LH   = 1.9;
 
-// Stem + circle
-const STEM_H       = 100;
-const CIRCLE_R     = 62;
-
-// Slide-in distance (off-screen)
-const SLIDE_DIST   = 860;
-
-// Solid colors for the shapes
-const COLOR_L = "#6366F1"; // Indigo
-const COLOR_R = "#EC4899"; // Pink
-
-// Heavy blur to hide the text completely
-const BLUR = 10;
-
-// ─── Scene ────────────────────────────────────────────────────────────────────
+// Code window shell
+const CodeWindow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div style={{
+    width: 920,
+    borderRadius: 18,
+    background: COLORS.codeBg,
+    border: "1.5px solid rgba(255,255,255,0.09)",
+    overflow: "hidden",
+    boxShadow: "0 28px 72px rgba(0,0,0,0.75)",
+  }}>
+    {/* Title bar */}
+    <div style={{
+      display: "flex", alignItems: "center",
+      background: "#0D1117",
+      borderBottom: "1px solid rgba(255,255,255,0.06)",
+      paddingLeft: 24, height: 72,
+    }}>
+      <div style={{ display: "flex", gap: 10, marginRight: 28 }}>
+        {["#FF5F57", "#FEBC2E", "#28C840"].map(c => (
+          <div key={c} style={{ width: 18, height: 18, borderRadius: "50%", background: c }} />
+        ))}
+      </div>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10,
+        background: COLORS.codeBg,
+        borderRadius: "8px 8px 0 0",
+        padding: "10px 24px 10px 16px",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderBottom: "none", marginBottom: -1,
+      }}>
+        <div style={{
+          background: "#C9A227", borderRadius: 5, padding: "2px 8px",
+          fontFamily: FONTS.mono, fontSize: 20, fontWeight: 800,
+          color: "#fff", letterSpacing: "0.04em", textTransform: "uppercase" as const,
+        }}>js</div>
+        <span style={{ fontFamily: FONTS.mono, fontSize: 26, fontWeight: 600, color: COLORS.offWhite }}>
+          debounce.js
+        </span>
+      </div>
+    </div>
+    <div style={{ padding: "32px 44px 40px" }}>{children}</div>
+  </div>
+);
 
 export const Scene4: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
 
-  // ── Rects slide in (frames 0–22) ─────────────────────────────────────────
-  const slideSpring = spring({
-    fps,
-    frame,
-    config: { damping: 16, stiffness: 160, mass: 0.9 },
-    durationInFrames: 24,
-  });
+  // Line 1 types: "function debounce(callback, delay) {"
+  const line1 = useTyped("function debounce(callback, delay) {", 20, 60, frame);
 
-  // Final resting positions (each rect measured from its own center, relative to canvas center)
-  // Left  rect: its right edge sits at -(GAP/2),  so center = -(RECT_W_L/2 + GAP/2)
-  // Right rect: its left  edge sits at +(GAP/2),  so center = +(RECT_W_R/2 + GAP/2)
-  const leftRestX  = -(RECT_W_L / 2 + GAP / 2);
-  const rightRestX =  (RECT_W_R / 2 + GAP / 2);
-
-  const leftX  = interpolate(slideSpring, [0, 1], [leftRestX  - SLIDE_DIST, leftRestX ]);
-  const rightX = interpolate(slideSpring, [0, 1], [rightRestX + SLIDE_DIST, rightRestX]);
-
-  const rectOpacity = interpolate(frame, [0, 8], [0, 1], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
-  });
-
-  // ── Stems grow (frames 18–30) ─────────────────────────────────────────────
-  const stemSpring = spring({
-    fps,
-    frame: Math.max(0, frame - 18),
-    config: { damping: 18, stiffness: 200, mass: 0.6 },
-    durationInFrames: 16,
-  });
-  const stemScale = interpolate(stemSpring, [0, 1], [0, 1]);
-
-  // ── Circles pop in (frames 24–36) ─────────────────────────────────────────
-  const circleSpring = spring({
-    fps,
-    frame: Math.max(0, frame - 24),
-    config: { damping: 11, stiffness: 240, mass: 0.5 },
-    durationInFrames: 18,
-  });
-  const circleScale   = interpolate(easeOutBack(clamp(circleSpring)), [0, 1], [0, 1]);
-  const circleOpacity = interpolate(frame, [24, 30], [0, 1], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
-  });
-
-  // ── Sentence words stagger in (frames 30–50) ──────────────────────────────
-  // const sentenceWords: { word: string; start: number; color?: string }[] = [
-  //   { word: "Two",        start: 30, color: COLORS.accentA },
-  //   { word: "properties", start: 36 },
-  //   { word: "change",     start: 42 },
-  //   { word: "that.",      start: 47 },
-  // ];
-
-  // ── Full scene fade-out (frames 55–60) ────────────────────────────────────
-  const sceneFade = interpolate(frame, [55, 60], [1, 0], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
-  });
+  const cursorBlink = Math.floor(frame / 8) % 2 === 0;
+  const line1Done = line1.length >= "function debounce(callback, delay) {".length;
 
   return (
-    <AbsoluteFill
-      style={{
-        background: "transparent",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        opacity: sceneFade,
-        position: "relative",
-        left: -36, // Nudge left to visually center the composition (since the right rect is wider)
-        scale: 0.75, // Slight overall scale up to add energy and prevent black edges during fade-out
-      }}
-    >
-      {/* ─── Central layout block ─────────────────────────────────────────
-          We use a relative container whose center aligns with the canvas center.
-          Total height: circle(above) + stem + rect + stem + circle(below)
-          We'll overlap the sentence below this via marginBottom.
-      ───────────────────────────────────────────────────────────────────── */}
-      <div
-        style={{
-          position: "relative",
-          width: RECT_W_L + RECT_W_R + GAP + CIRCLE_R * 4 + 40,
-          height: CIRCLE_R * 2 + STEM_H + RECT_H + STEM_H + CIRCLE_R * 2,
-          marginBottom: 60,
-          flexShrink: 0,
-        }}
-      >
-        {/* Helper — everything anchored to horizontal center of this container */}
-        {(() => {
-          const CW = RECT_W_L + RECT_W_R + GAP + CIRCLE_R * 4 + 40;
-          const cx = CW / 2;                           // horizontal center of container
-          const rectTop = CIRCLE_R * 2 + STEM_H;       // Y where rects sit
+    <AbsoluteFill style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      paddingTop: SAFE.top + 80,
+      paddingLeft: SAFE.left + 20,
+      paddingRight: SAFE.right + 20,
+    }}>
 
-          return (
-            <>
-              {/* ══ LEFT RECT ══════════════════════════════════════════ */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: rectTop,
-                  left: cx + leftX - RECT_W_L / 2,
-                  width: RECT_W_L,
-                  height: RECT_H,
-                  borderRadius: 18,
-                  background: COLOR_L,
-                  boxShadow: `0 18px 50px rgba(0,0,0,0.55)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: rectOpacity,
-                  overflow: "hidden",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: FONTS.mono,
-                    fontSize: FONT_SIZE,
-                    fontWeight: 700,
-                    color: "rgba(0, 0, 0)", // Transparent color
-                    filter: `blur(${BLUR}px)`, // Heavily blurred to hide it
-                    whiteSpace: "nowrap",
-                    letterSpacing: "-0.01em",
-                    userSelect: "none",
-                  }}
-                >
-                  {TEXT_LEFT}
-                </span>
-              </div>
-
-              {/* ══ RIGHT RECT ═════════════════════════════════════════ */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: rectTop,
-                  left: cx + rightX - RECT_W_R / 2,
-                  width: RECT_W_R,
-                  height: RECT_H,
-                  borderRadius: 18,
-                  background: COLOR_R,
-                  boxShadow: `0 18px 50px rgba(0,0,0,0.55)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: rectOpacity,
-                  overflow: "hidden",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: FONTS.mono,
-                    fontSize: FONT_SIZE,
-                    fontWeight: 700,
-                    color: "rgba(0, 0, 0)", // Transparent color
-                    filter: `blur(${BLUR}px)`, // Heavily blurred to hide it
-                    whiteSpace: "nowrap",
-                    letterSpacing: "-0.01em",
-                    userSelect: "none",
-                  }}
-                >
-                  {TEXT_RIGHT}
-                </span>
-              </div>
-
-              {/* ══ STEM UP — from top of left rect ════════════════════ */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: cx + leftX - 2,
-                  top: rectTop - STEM_H,
-                  width: 4,
-                  height: STEM_H,
-                  borderRadius: 2,
-                  background: COLOR_L,
-                  opacity: rectOpacity,
-                  transform: `scaleY(${stemScale})`,
-                  transformOrigin: "bottom center",
-                }}
-              />
-
-              {/* ══ CIRCLE 01 — above left rect ════════════════════════ */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: cx + leftX - CIRCLE_R - 30,
-                  top: rectTop - STEM_H - CIRCLE_R * 3,
-                  width: CIRCLE_R * 3,
-                  height: CIRCLE_R * 3,
-                  borderRadius: "50%",
-                  background: COLOR_L,
-                  boxShadow: `0 0 28px rgba(99, 102, 241, 0.4)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: circleOpacity,
-                  transform: `scale(${circleScale})`,
-                  transformOrigin: "center bottom",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: FONTS.mono,
-                    fontSize: 90,
-                    fontWeight: 800,
-                    color: "rgba(0, 0, 0)", // Transparent color
-                     // Blurred so it acts as an abstract design element
-                    letterSpacing: "-0.02em",
-                    lineHeight: 1,
-                  }}
-                >
-                  01
-                </span>
-              </div>
-
-              {/* ══ STEM DOWN — from bottom of right rect ══════════════ */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: cx + rightX - 2,
-                  top: rectTop + RECT_H,
-                  width: 4,
-                  height: STEM_H,
-                  borderRadius: 2,
-                  background: COLOR_R,
-                  opacity: rectOpacity,
-                  transform: `scaleY(${stemScale})`,
-                  transformOrigin: "top center",
-                }}
-              />
-
-              {/* ══ CIRCLE 02 — below right rect ═══════════════════════ */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: cx + rightX - CIRCLE_R - 30,
-                  top: rectTop + RECT_H + STEM_H,
-                  width: CIRCLE_R * 3,
-                  height: CIRCLE_R * 3,
-                  borderRadius: "50%",
-                  background: COLOR_R,
-                  boxShadow: `0 0 28px rgba(236, 72, 153, 0.4)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: circleOpacity,
-                  transform: `scale(${circleScale})`,
-                  transformOrigin: "center top",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: FONTS.mono,
-                    fontSize: 90,
-                    fontWeight: 800,
-                    color: "rgba(0, 0, 0)", // Transparent color
-                     // Blurred so it acts as an abstract design element
-                    letterSpacing: "-0.02em",
-                    lineHeight: 1,
-                  }}
-                >
-                  02
-                </span>
-              </div>
-            </>
-          );
-        })()}
+      {/* Headline */}
+      <div style={{ width: "100%", maxWidth: CANVAS.safeWidth, marginBottom: 60 }}>
+        {[
+          { text: "Here's how", start: 0 },
+          { text: "we build it.", start: 8 },
+        ].map(({ text, start }, i) => (
+          <div key={i} style={{
+            ...fadeUp(frame, start, 16),
+            fontFamily: FONTS.display,
+            fontSize: 70,
+            fontWeight: 800,
+            color: COLORS.white,
+            lineHeight: 1.15,
+            letterSpacing: "-0.02em",
+          }}>
+            {text}
+          </div>
+        ))}
       </div>
+
+      {/* Code window */}
+      <div style={{ ...fadeUp(frame, 14, 16) }}>
+        <CodeWindow>
+          {/* function debounce(callback, delay) { */}
+          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, whiteSpace: "pre" }}>
+            {(() => {
+              // Parse and colour the typed portion
+              const full = "function debounce(callback, delay) {";
+              const shown = line1;
+              const chunks: Array<{ text: string; color: string }> = [
+                { text: "function ",  color: COLORS.keyword   },
+                { text: "debounce",   color: COLORS.fnName    },
+                { text: "(",          color: COLORS.punctuation },
+                { text: "callback",   color: COLORS.value     },
+                { text: ", ",         color: COLORS.punctuation },
+                { text: "delay",      color: COLORS.value     },
+                { text: ") {",        color: COLORS.punctuation },
+              ];
+              let left = shown.length;
+              return chunks.map((ch, i) => {
+                if (left <= 0) return null;
+                const s = ch.text.slice(0, left);
+                left -= ch.text.length;
+                return <T key={i} c={ch.color}>{s}</T>;
+              });
+            })()}
+            {/* typing cursor */}
+            {!line1Done && (
+              <span style={{
+                display: "inline-block", width: 3, height: "0.82em",
+                background: COLORS.accentA, marginLeft: 3,
+                verticalAlign: "middle", opacity: cursorBlink ? 1 : 0,
+              }} />
+            )}
+          </div>
+
+          {/* Closing brace placeholder */}
+          {line1Done && (
+            <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, color: COLORS.punctuation }}>
+              {"}"}
+            </div>
+          )}
+        </CodeWindow>
+      </div>
+
+      {/* Parameter annotations */}
+      <div style={{ width: "100%", maxWidth: CANVAS.safeWidth, marginTop: 48, display: "flex", flexDirection: "column", gap: 24 }}>
+        {[
+          {
+            name: "callback",
+            color: COLORS.value,
+            desc: "the function you want to control",
+            start: 65,
+          },
+          {
+            name: "delay",
+            color: COLORS.value,
+            desc: "how long to wait (in ms)",
+            start: 80,
+          },
+        ].map(({ name, color, desc, start }) => (
+          <div key={name} style={{
+            ...fadeUp(frame, start, 14),
+            display: "flex",
+            alignItems: "center",
+            gap: 20,
+            padding: "18px 28px",
+            borderRadius: 14,
+            background: COLORS.surface,
+            border: `1px solid ${COLORS.border}`,
+          }}>
+            <span style={{ fontFamily: FONTS.mono, fontSize: 30, fontWeight: 800, color }}>
+              {name}
+            </span>
+            <span style={{ color: COLORS.subtle, fontSize: 24 }}>—</span>
+            <span style={{ fontFamily: FONTS.display, fontSize: 28, color: COLORS.muted }}>
+              {desc}
+            </span>
+          </div>
+        ))}
+      </div>
+
     </AbsoluteFill>
   );
 };
