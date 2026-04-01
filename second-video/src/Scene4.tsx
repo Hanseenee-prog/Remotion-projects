@@ -163,7 +163,7 @@ export const Scene4: React.FC = () => {
         {/* ── Annotation: callback (above code window) ──────────────────────── */}
         <div style={{ position: "absolute", top: -150, width: "90%", display: "flex", flexDirection: "column", alignItems: "flex-start", position: "relative" }}>
           <AnnotationBox
-            name="searchMovies"
+            name="searchMovies()"
             nameColor={COLORS.accentC}
             desc="the function you want to control"
             opacity={cbBoxOp * globalOut}
