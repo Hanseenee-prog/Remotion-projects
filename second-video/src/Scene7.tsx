@@ -1,39 +1,51 @@
-// Scene 7 — "Fix it: let timer, clearTimeout on each new event"
+// Scene 7 — "The Fix: Timer & ClearTimeout + Applying Debounce"
+// Total Duration: 300 Frames
 //
-// Visual: Two new lines type in: "let timer" before the return,
-// and "clearTimeout(timer); timer = setTimeout(...)" inside the function.
-// Demo shows only ONE timer survives each keypress.
+// Sequence:
+//   0-20    : Initial code from Scene 6
+//   20-45   : Type "let timer;" quickly
+//   45-75   : DIM others, HIGHLIGHT "let timer;"
+//   75-100  : Prepend "timer = " to setTimeout
+//   100-130 : DIM others, HIGHLIGHT "timer = setTimeout..." AND its inner block
+//   130-160 : Type "clearTimeout(timer);"
+//   160-185 : DIM others, HIGHLIGHT "clearTimeout(timer);"
+//   185-200 : Restore all, Fade out first window
+//   200-210 : Fade in second code window
+//   210-240 : Type "debounce(() => searchMovies(e));"
+//   245-255 : Insert ", 1000" inside the call
+//   255-285 : DIM others, HIGHLIGHT ", 1000"
+//   285-292 : Restore dim
+//   292-300 : Fade out completely in 8 frames
 
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, interpolate, spring, useVideoConfig } from "remotion";
-import { COLORS, FONTS, SAFE, CANVAS } from "./tokens";
+import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
+import { COLORS, FONTS } from "./tokens";
 
-const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-function fadeUp(frame: number, start: number, dur = 18, dist = 30) {
-  const t = Math.min(Math.max((frame - start) / dur, 0), 1);
-  const e = easeOut(t);
-  return { opacity: e, transform: `translateY(${(1 - e) * dist}px)` };
-}
-function clamp(v: number, lo = 0, hi = 1) { return Math.min(Math.max(v, lo), hi); }
-function useTyped(text: string, sf: number, ef: number, frame: number) {
-  const p = clamp((frame - sf) / (ef - sf));
-  return text.slice(0, Math.floor(p * text.length));
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const clamp = (v: number, lo = 0, hi = 1) => Math.min(Math.max(v, lo), hi);
+const prog = (frame: number, s: number, e: number) => clamp((frame - s) / (e - s));
 
-const T: React.FC<{ c: string; children: React.ReactNode }> = ({ c, children }) => (
-  <span style={{ color: c, fontFamily: FONTS.mono, whiteSpace: "pre" }}>{children}</span>
+const T: React.FC<{ c: string; children: React.ReactNode; opacity?: number }> = ({ 
+  c, children, opacity = 1 
+}) => (
+  <span style={{ color: c, fontFamily: FONTS.mono, whiteSpace: "pre", opacity }}>
+    {children}
+  </span>
 );
 
-const FONT = 34;
-const LH   = 1.85;
+const FONT = 38;
+const LH = 1.9;
 
-const CodeWindow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+// ─── Full Code Window (from Scene 6) ──────────────────────────────────────────
+const CodeWindow: React.FC<{ children: React.ReactNode; opacity: number }> = ({ children, opacity }) => (
   <div style={{
-    width: 960, borderRadius: 18,
+    width: 920,
+    borderRadius: 18,
     background: COLORS.codeBg,
     border: "1.5px solid rgba(255,255,255,0.09)",
     overflow: "hidden",
     boxShadow: "0 28px 72px rgba(0,0,0,0.75)",
+    opacity,
   }}>
     <div style={{
       display: "flex", alignItems: "center",
@@ -48,7 +60,8 @@ const CodeWindow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
       </div>
       <div style={{
         display: "flex", alignItems: "center", gap: 10,
-        background: COLORS.codeBg, borderRadius: "8px 8px 0 0",
+        background: COLORS.codeBg,
+        borderRadius: "8px 8px 0 0",
         padding: "10px 24px 10px 16px",
         border: "1px solid rgba(255,255,255,0.08)",
         borderBottom: "none", marginBottom: -1,
@@ -63,81 +76,72 @@ const CodeWindow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
         </span>
       </div>
     </div>
-    <div style={{ padding: "28px 44px 36px" }}>{children}</div>
-  </div>
-);
-
-const HL: React.FC<{ children: React.ReactNode; active?: boolean }> = ({ children, active }) => (
-  <div style={{
-    background: active ? `${COLORS.accentA}14` : "transparent",
-    borderLeft: active ? `3px solid ${COLORS.accentA}` : "3px solid transparent",
-    paddingLeft: active ? 8 : 8,
-    borderRadius: active ? "0 6px 6px 0" : 0,
-    margin: "0 -8px",
-  }}>
-    {children}
+    <div style={{ padding: "32px 44px 40px" }}>{children}</div>
   </div>
 );
 
 export const Scene7: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
 
-  const letTimer  = useTyped("  let timer;", 12, 35, frame);
-  const letDone   = letTimer.length >= "  let timer;".length;
+  // ── Animation States: Phase 1 (Frames 0-200) ──
+  
+  // Phase: let timer;
+  const isHighlightingTimer = frame >= 45 && frame < 75;
 
-  const clearLine = useTyped("    clearTimeout(timer);", 50, 75, frame);
-  const clearDone = clearLine.length >= "    clearTimeout(timer);".length;
+  // Phase: timer = (Prepended to setTimeout)
+  const typeAssignment = prog(frame, 75, 100);
+  const isHighlightingAssignment = frame >= 100 && frame < 130;
 
-  const timerLine = useTyped("    timer = setTimeout(() => callback(...args), delay);", 78, 120, frame);
-  const timerDone = timerLine.length >= "    timer = setTimeout(() => callback(...args), delay);".length;
+  // Phase: clearTimeout(timer);
+  const isHighlightingClear = frame >= 160 && frame < 185;
 
-  const cursorBlink = Math.floor(frame / 8) % 2 === 0;
+  // Global Dim Logic Phase 1
+  const anyHighlight = isHighlightingTimer || isHighlightingAssignment || isHighlightingClear;
+  const baseDim = anyHighlight ? 0.25 : 1;
+  const sceneOpacity = interpolate(frame, [190, 200], [1, 0], { extrapolateRight: "clamp" });
 
-  // Keystroke demo (frames 140+): only ONE timer survives
-  const DEMO_START = 140;
-  const KEY_INT    = 20;
-  const KEYS       = ["A", "v", "e", "n", "g", "e", "r", "s"];
-  const keysVisible = Math.min(
-    Math.floor(Math.max(frame - DEMO_START, 0) / KEY_INT),
-    KEYS.length
-  );
+  // Block Opacities Phase 1
+  const opTimer = isHighlightingTimer ? 1 : baseDim;
+  const opAssignment = isHighlightingAssignment ? 1 : baseDim;
+  const opClear = isHighlightingClear ? 1 : baseDim;
+
+
+  // ── Animation States: Phase 2 (Frames 200-300) ──
+
+  // Fade in / Fade out for Phase 2
+  const scene2FadeIn = interpolate(frame, [200, 205], [0, 1], { extrapolateRight: "clamp", extrapolateLeft: "clamp" });
+  const scene2FadeOut = interpolate(frame, [292, 300], [1, 0], { extrapolateRight: "clamp", extrapolateLeft: "clamp" });
+  const scene2Opacity = frame < 290 ? scene2FadeIn : scene2FadeOut;
+
+  // Typing `debounce(() => searchMovies(e));` (32 chars)
+  const typeProg1 = prog(frame, 210, 240);
+  const c1 = Math.floor(typeProg1 * 32);
+  const getC = (start: number, len: number) => {
+    if (c1 <= start) return 0;
+    if (c1 >= start + len) return len;
+    return c1 - start;
+  };
+
+  // Typing `, 1000` (6 chars)
+  const typeProg2 = prog(frame, 245, 255);
+  const c2 = Math.floor(typeProg2 * 6);
+  const delayChunk = ", 1000".slice(0, c2);
+
+  // Dim logic Phase 2
+  const isHighlightingDelay = frame >= 255 && frame < 285;
+  const baseDim2 = isHighlightingDelay ? 0.25 : 1;
 
   return (
-    <AbsoluteFill style={{
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      paddingTop: SAFE.top + 50,
-      paddingLeft: SAFE.left + 20,
-      paddingRight: SAFE.right + 20,
+    <AbsoluteFill style={{ 
+      background: "transparent", 
+      display: "flex", 
+      alignItems: "center", 
+      justifyContent: "center" 
     }}>
-
-      {/* Headline */}
-      <div style={{ width: "100%", maxWidth: CANVAS.safeWidth, marginBottom: 36 }}>
-        {[
-          { text: "Fix it with",        start: 0 },
-          { text: "clearTimeout.",      start: 6, accent: COLORS.accentA },
-        ].map(({ text, start, accent }, i) => (
-          <div key={i} style={{
-            ...fadeUp(frame, start, 14),
-            fontFamily: FONTS.display,
-            fontSize: 68,
-            fontWeight: 800,
-            color: accent ?? COLORS.white,
-            lineHeight: 1.15,
-            letterSpacing: "-0.02em",
-          }}>
-            {text}
-          </div>
-        ))}
-      </div>
-
-      {/* Code window */}
-      <div style={{ ...fadeUp(frame, 6, 14) }}>
-        <CodeWindow>
-          {/* Line 0 */}
-          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH }}>
+      {frame < 200 ? (
+        <CodeWindow opacity={sceneOpacity}>
+          {/* function debounce(callback, delay) { */}
+          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, opacity: baseDim }}>
             <T c={COLORS.keyword}>function </T>
             <T c={COLORS.fnName}>debounce</T>
             <T c={COLORS.punctuation}>(</T>
@@ -147,163 +151,102 @@ export const Scene7: React.FC = () => {
             <T c={COLORS.punctuation}>) {"{"}</T>
           </div>
 
-          {/* let timer — NEW highlighted line */}
-          <HL active={frame >= 12 && frame < 80}>
-            <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, whiteSpace: "pre" }}>
-              {(() => {
-                const chunks = [
-                  { text: "  ",       color: COLORS.codeText   },
-                  { text: "let ",     color: COLORS.keyword    },
-                  { text: "timer",    color: COLORS.value      },
-                  { text: ";",        color: COLORS.punctuation },
-                ];
-                let left = letTimer.length;
-                return chunks.map((ch, i) => {
-                  if (left <= 0) return null;
-                  const s = ch.text.slice(0, left);
-                  left -= ch.text.length;
-                  return <T key={i} c={ch.color}>{s}</T>;
-                });
-              })()}
-              {!letDone && (
-                <span style={{
-                  display: "inline-block", width: 3, height: "0.82em",
-                  background: COLORS.accentA, marginLeft: 3,
-                  verticalAlign: "middle", opacity: cursorBlink ? 1 : 0,
-                }} />
-              )}
-            </div>
-          </HL>
+          {/* let timer; */}
+          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, opacity: opTimer }}>
+            <T c={COLORS.codeText}>  </T>
+            <T c={COLORS.keyword}>{"let ".slice(0, Math.floor(prog(frame, 20, 30) * 4))}</T>
+            <T c={COLORS.codeText}>{"timer;".slice(0, Math.floor(prog(frame, 30, 45) * 6))}</T>
+          </div>
 
-          {/* return function */}
-          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH }}>
-            <T c={COLORS.keyword}>{"  return "}</T>
-            <T c={COLORS.keyword}>function</T>
+          {/* Blank line under let timer; */}
+          <div style={{ height: LH * FONT, opacity: baseDim }} />
+
+          {/* return (...args) => { */}
+          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, opacity: baseDim }}>
+            <T c={COLORS.keyword}>  return </T>
             <T c={COLORS.punctuation}>(</T>
-            <T c={COLORS.spread}>...</T>
+            <T c={"#D2A8FF"}>...</T>
             <T c={COLORS.value}>args</T>
-            <T c={COLORS.punctuation}>) {"{"}</T>
+            <T c={COLORS.punctuation}>) </T>
+            <T c={COLORS.keyword}>{"=>"}</T>
+            <T c={COLORS.punctuation}> {"{"}</T>
           </div>
 
-          {/* clearTimeout — NEW */}
-          <HL active={frame >= 50 && frame < 130}>
-            <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, whiteSpace: "pre" }}>
-              {(() => {
-                const chunks = [
-                  { text: "    ",             color: COLORS.codeText   },
-                  { text: "clearTimeout",      color: COLORS.fnName     },
-                  { text: "(",               color: COLORS.punctuation },
-                  { text: "timer",           color: COLORS.value      },
-                  { text: ");",              color: COLORS.punctuation },
-                ];
-                let left = clearLine.length;
-                return chunks.map((ch, i) => {
-                  if (left <= 0) return null;
-                  const s = ch.text.slice(0, left);
-                  left -= ch.text.length;
-                  return <T key={i} c={ch.color}>{s}</T>;
-                });
-              })()}
-              {!clearDone && letDone && (
-                <span style={{
-                  display: "inline-block", width: 3, height: "0.82em",
-                  background: COLORS.accentA, marginLeft: 3,
-                  verticalAlign: "middle", opacity: cursorBlink ? 1 : 0,
-                }} />
-              )}
-            </div>
-          </HL>
+          {/* clearTimeout(timer); */}
+          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, opacity: opClear }}>
+            <T c={COLORS.codeText}>    </T>
+            <T c={COLORS.fnName}>{"clearTimeout".slice(0, Math.floor(prog(frame, 130, 145) * 12))}</T>
+            <T c={COLORS.punctuation}>{"(".slice(0, Math.floor(prog(frame, 145, 147) * 1))}</T>
+            <T c={COLORS.codeText}>{"timer".slice(0, Math.floor(prog(frame, 147, 155) * 5))}</T>
+            <T c={COLORS.punctuation}>{");".slice(0, Math.floor(prog(frame, 155, 160) * 2))}</T>
+          </div>
 
-          {/* timer = setTimeout — NEW */}
-          <HL active={frame >= 78 && frame < 145}>
-            <div style={{ fontFamily: FONTS.mono, fontSize: FONT - 2, fontWeight: 700, lineHeight: LH, whiteSpace: "pre" }}>
-              {(() => {
-                const chunks = [
-                  { text: "    ",           color: COLORS.codeText   },
-                  { text: "timer",          color: COLORS.value      },
-                  { text: " = ",            color: COLORS.punctuation },
-                  { text: "setTimeout",     color: COLORS.fnName     },
-                  { text: "(() => ",        color: COLORS.punctuation },
-                  { text: "callback",       color: COLORS.fnName     },
-                  { text: "(",             color: COLORS.punctuation },
-                  { text: "...",           color: COLORS.spread      },
-                  { text: "args",          color: COLORS.value       },
-                  { text: "), ",           color: COLORS.punctuation },
-                  { text: "delay",         color: COLORS.value       },
-                  { text: ");",            color: COLORS.punctuation },
-                ];
-                let left = timerLine.length;
-                return chunks.map((ch, i) => {
-                  if (left <= 0) return null;
-                  const s = ch.text.slice(0, left);
-                  left -= ch.text.length;
-                  return <T key={i} c={ch.color}>{s}</T>;
-                });
-              })()}
-              {!timerDone && clearDone && (
-                <span style={{
-                  display: "inline-block", width: 3, height: "0.82em",
-                  background: COLORS.accentA, marginLeft: 3,
-                  verticalAlign: "middle", opacity: cursorBlink ? 1 : 0,
-                }} />
-              )}
-            </div>
-          </HL>
+          {/* Blank line under clearTimeout(timer); */}
+          <div style={{ height: LH * FONT, opacity: baseDim }} />
 
-          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, color: COLORS.punctuation }}>{"  }"}</div>
-          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, color: COLORS.punctuation }}>{"}"}</div>
+          {/* timer = setTimeout(() => { */}
+          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, opacity: opAssignment }}>
+            <T c={COLORS.codeText}>    </T>
+            {frame >= 75 && <T c={COLORS.codeText}>{"timer = ".slice(0, Math.floor(typeAssignment * 8))}</T>}
+            <T c={COLORS.fnName}>setTimeout</T>
+            <T c={COLORS.punctuation}>{"(() "}</T>
+            <T c={COLORS.keyword}>{"=>"}</T>
+            <T c={COLORS.punctuation}>{" {"}</T>
+          </div>
+
+          {/* callback(...args); */}
+          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, opacity: opAssignment }}>
+            <T c={COLORS.codeText}>      </T>
+            <T c={COLORS.fnName}>callback</T>
+            <T c={COLORS.punctuation}>(</T>
+            <T c={"#D2A8FF"}>...</T>
+            <T c={COLORS.value}>args</T>
+            <T c={COLORS.punctuation}>);</T>
+          </div>
+
+          {/* }, delay); */}
+          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, opacity: opAssignment }}>
+            <T c={COLORS.punctuation}>    {"}, "}</T>
+            <T c={COLORS.value}>delay</T>
+            <T c={COLORS.punctuation}>);</T>
+          </div>
+
+          {/* }; (The return closing brace) */}
+          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, color: COLORS.punctuation, opacity: baseDim, paddingLeft: "2ch" }}>
+            {"  };"}
+          </div>
+
+          {/* } (The function closing brace) */}
+          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, color: COLORS.punctuation, opacity: baseDim }}>
+            {"}"}
+          </div>
+
         </CodeWindow>
-      </div>
+      ) : (
+        <CodeWindow opacity={scene2Opacity}>
+          {/* Phase 2: debounce(() => searchMovies(e), 1000); */}
+          <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH }}>
+            <T c={COLORS.fnName} opacity={baseDim2}>{"debounce".slice(0, getC(0, 8))}</T>
+            <T c={COLORS.punctuation} opacity={baseDim2}>{"(".slice(0, getC(8, 1))}</T>
+            <T c={COLORS.punctuation} opacity={baseDim2}>{"() ".slice(0, getC(9, 3))}</T>
+            <T c={COLORS.keyword} opacity={baseDim2}>{"=> ".slice(0, getC(12, 3))}</T>
+            <T c={COLORS.fnName} opacity={baseDim2}>{"searchMovies".slice(0, getC(15, 12))}</T>
+            <T c={COLORS.punctuation} opacity={baseDim2}>{"(".slice(0, getC(27, 1))}</T>
+            <T c={COLORS.value} opacity={baseDim2}>{"e".slice(0, getC(28, 1))}</T>
+            <T c={COLORS.punctuation} opacity={baseDim2}>{")".slice(0, getC(29, 1))}</T>
+            
+            {/* Delay part: typed in naturally, maintaining its brightness while everything else dims */}
+            {c2 > 0 && (
+              <span>
+                <T c={COLORS.punctuation} opacity={1}>{delayChunk.slice(0, 2)}</T>
+                <T c={COLORS.value} opacity={1}>{delayChunk.slice(2)}</T>
+              </span>
+            )}
 
-      {/* Demo: only last timer survives */}
-      {frame >= DEMO_START && (
-        <div style={{
-          ...fadeUp(frame, DEMO_START, 12),
-          width: "100%",
-          maxWidth: CANVAS.safeWidth,
-          marginTop: 28,
-          padding: "20px 28px",
-          borderRadius: 16,
-          background: `${COLORS.accentA}10`,
-          border: `1.5px solid ${COLORS.accentA}33`,
-        }}>
-          <div style={{ fontFamily: FONTS.mono, fontSize: 24, color: COLORS.muted, marginBottom: 10 }}>
-            Typing "Avengers" fast…
+            <T c={COLORS.punctuation} opacity={baseDim2}>{");".slice(0, getC(30, 2))}</T>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" as const }}>
-            {Array.from({ length: keysVisible }).map((_, i) => {
-              const isLast = i === keysVisible - 1;
-              const age    = frame - (DEMO_START + i * KEY_INT);
-              return (
-                <div key={i} style={{
-                  padding: "8px 16px",
-                  borderRadius: 8,
-                  background: isLast ? `${COLORS.accentA}22` : `${COLORS.accentC}14`,
-                  border: `1.5px solid ${isLast ? COLORS.accentA : COLORS.accentC}66`,
-                  fontFamily: FONTS.mono,
-                  fontSize: 22,
-                  color: isLast ? COLORS.accentA : COLORS.muted,
-                  opacity: isLast ? 1 : 0.45,
-                }}>
-                  {isLast ? `'${KEYS[i]}' — active timer ✓` : `'${KEYS[i]}' — cleared`}
-                </div>
-              );
-            })}
-          </div>
-          {keysVisible >= KEYS.length && (
-            <div style={{
-              marginTop: 16,
-              fontFamily: FONTS.display,
-              fontSize: 28,
-              fontWeight: 700,
-              color: COLORS.accentA,
-            }}>
-              ✅ Only 1 API call fires!
-            </div>
-          )}
-        </div>
+        </CodeWindow>
       )}
-
     </AbsoluteFill>
   );
 };

@@ -68,11 +68,12 @@ export const DURATIONS = {
   s1: Math.round(5.0 * 30),   // 150f — every-keypress firing demo
   s2: Math.round(7.0 * 30),   // 180f — movie API overload
   s3: Math.round(7.0 * 30),   // 150f — debounce concept intro
-  s4: Math.round(8.5 * 30),   // 210f — function signature
+  s4: Math.round(8.3 * 30),   // 210f — function signature
   s5: Math.round(9.0 * 30),   // 210f — return fn + ...args
-  s6: Math.round(8.0 * 30),   // 240f — setTimeout wrap, still fires each press
-  s7: Math.round(8.0 * 30),   // 240f — clearTimeout fix
-  s8: Math.round(6.0 * 30),   // 180f — Avengers demo, one call
+  s6: Math.round(4.5 * 30),   // 240f — setTimeout wrap, still fires each press
+  sSix: Math.round(7.8 * 30),
+  s7: Math.round(10.0 * 30),   // 240f — clearTimeout fix
+  s8: Math.round(5.0 * 30),   // 180f — Avengers demo, one call
   s9: Math.round(4.0 * 30),   // 120f — CTA
 } as const;
 
