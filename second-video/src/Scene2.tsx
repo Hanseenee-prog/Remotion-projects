@@ -127,7 +127,7 @@ const Particle: React.FC<{ index: number; accumText: string; frame: number }> = 
           background: COLORS.codeBg, border: `3px solid ${COLORS.accentB}`, padding: "16px 28px", borderRadius: 20,
           fontFamily: FONTS.mono, fontSize: 32, fontWeight: 700, color: "white", transform: `scale(${scale})`
         }}>
-          GET "{accumText}"
+          GET <span style={{ color: COLORS.accentB }}>"{accumText}"</span>
         </div>
       ) : (
         <div style={{
