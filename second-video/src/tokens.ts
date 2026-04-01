@@ -66,7 +66,7 @@ export const FONTS = {
 // ─── Scene durations (frames @ 30 fps) ───────────────────────────────────────
 export const DURATIONS = {
   s1: Math.round(5.0 * 30),   // 150f — every-keypress firing demo
-  s2: Math.round(6.0 * 30),   // 180f — movie API overload
+  s2: Math.round(7.0 * 30),   // 180f — movie API overload
   s3: Math.round(5.0 * 30),   // 150f — debounce concept intro
   s4: Math.round(7.0 * 30),   // 210f — function signature
   s5: Math.round(7.0 * 30),   // 210f — return fn + ...args
