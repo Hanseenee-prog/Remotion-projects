@@ -80,7 +80,7 @@ export const Scene6: React.FC = () => {
             boxShadow: "0 24px 48px rgba(0,0,0,0.5)", zIndex: 10,
           }}>
             <div style={{ fontFamily: FONTS.mono, fontSize: 35, fontWeight: 700, whiteSpace: "nowrap" }}>
-              <span style={{ opacity: 0.35 }}><T c={COLORS.fnName}>onScroll</T></span>
+              <span style={{ opacity: 0.35 }}><T c={COLORS.fnName}>updateAnimation</T></span>
               <span style={{ opacity: 0.35 }}><T c={COLORS.punctuation}>(</T></span>
               <span style={{ opacity: 1 }}><T c={COLORS.squareBracket}>[</T></span>
               <span style={{ opacity: 1 }}><T c={COLORS.atRule}>e</T></span>
