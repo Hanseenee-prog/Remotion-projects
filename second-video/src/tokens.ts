@@ -60,7 +60,7 @@ export const FONTS = {
 export const DURATIONS = {
   s1:  Math.round(5.0 * 30),  // 150f — scroll fires on every event
   s2:  Math.round(7.5 * 30),  // 165f — heavy logic, lag visualization
-  s3:  Math.round(7.5 * 30),  // 210f — throttle concept diagram
+  s3:  Math.round(7.3 * 30),  // 210f — throttle concept diagram
   s4:  Math.round(8.0 * 30),  // 240f — function signature + annotations
   s5:  Math.round(4.0 * 30),  // 180f — isAllowed flag
   s6:  Math.round(7.0 * 30),  // 210f — return (...args) =>

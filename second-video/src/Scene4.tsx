@@ -4,10 +4,10 @@
 // Timeline:
 //   0–14   : code window slides in
 //   14–65  : "function throttle(callback, delay) {" types out
-//   70–140 : settled
-//   140–170: callback phase — dim, annotation box + curved arrow in
-//   170–200: restore, delay phase — dim, annotation box + curved arrow in
-//   200–232: settled
+//   65–125 : settled
+//   125–155: callback phase — dim, annotation box + curved arrow in
+//   155–185: restore, delay phase — dim, annotation box + curved arrow in
+//   185–232: settled
 //   232–240: fade out
 
 import React from "react";
@@ -96,17 +96,18 @@ export const Scene4: React.FC = () => {
   });
 
   const LINE = "function throttle(callback, delay) {";
-  const line1 = useTyped(LINE, 14, 65, frame);
+  const line1 = useTyped(LINE, 12, 65, frame);
   const line1Done = line1.length >= LINE.length;
   const cursorBlink = Math.floor(frame / 8) % 2 === 0;
 
-  const cbDimP  = easeOut(prog(frame, 140, 155)) * (1 - easeOut(prog(frame, 185, 200)));
-  const cbLineP = easeOut(prog(frame, 148, 168));
-  const cbBoxOp = easeOut(prog(frame, 152, 168)) * (1 - easeOut(prog(frame, 182, 196)));
+  // Timings shifted 15 frames earlier
+  const cbDimP  = easeOut(prog(frame, 125, 140)) * (1 - easeOut(prog(frame, 170, 185)));
+  const cbLineP = easeOut(prog(frame, 133, 153));
+  const cbBoxOp = easeOut(prog(frame, 137, 153)) * (1 - easeOut(prog(frame, 167, 181)));
 
-  const dlDimP  = easeOut(prog(frame, 200, 215));
-  const dlLineP = easeOut(prog(frame, 208, 228));
-  const dlBoxOp = easeOut(prog(frame, 212, 228));
+  const dlDimP  = easeOut(prog(frame, 185, 200));
+  const dlLineP = easeOut(prog(frame, 193, 213));
+  const dlBoxOp = easeOut(prog(frame, 197, 213));
 
   const kwOp    = interpolate(cbDimP, [0, 1], [1, DIM]) * interpolate(dlDimP, [0, 1], [1, DIM]);
   const cbOp    = interpolate(cbDimP, [0, 1], [1, 1])   * interpolate(dlDimP, [0, 1], [1, DIM]);
@@ -124,9 +125,9 @@ export const Scene4: React.FC = () => {
       }}>
 
         {/* Annotation: callback (above) */}
-        <div style={{ position: "absolute", width: "70.1%", top: 600 }}>
+        <div style={{ position: "absolute", width: "82.6%", top: 600 }}>
           <AnnotationBox
-            name="onScroll()"
+            name="updateAnimation()"
             nameColor={COLORS.accentC}
             desc="the function you want to control"
             opacity={cbBoxOp * globalOut}
@@ -144,12 +145,12 @@ export const Scene4: React.FC = () => {
               <span style={{ opacity: puncOp }}>
                 <T c={COLORS.punctuation}>{"("}</T>
               </span>
-              {line1.length >= 19 && (
+              {line1.length >= 29 && (
                 <span style={{ opacity: cbOp }}>
                   <T c={COLORS.value}>{"callback"}</T>
                 </span>
               )}
-              {line1.length < 19 && line1.length > 10 && (
+              {line1.length < 29 && line1.length > 10 && (
                 <span style={{ opacity: cbOp }}>
                   <T c={COLORS.value}>{line1.slice(10)}</T>
                 </span>
@@ -169,9 +170,9 @@ export const Scene4: React.FC = () => {
                   <T c={COLORS.value}>{line1.slice(28)}</T>
                 </span>
               )}
-              {line1.length >= 37 && (
+              {line1.length >= 36 && (
                 <span style={{ opacity: braceOp }}>
-                  <T c={COLORS.punctuation}>{") {"}</T>
+                  <T c={COLORS.punctuation}>{")"}</T>
                 </span>
               )}
               {line1.length >= 34 && line1.length < 37 && (
@@ -196,7 +197,7 @@ export const Scene4: React.FC = () => {
         </div>
 
         {/* Annotation: delay (below) */}
-        <div style={{ position: "absolute", bottom: 500, width: "50%" }}>
+        <div style={{ position: "absolute", bottom: 500, width: "52.4%" }}>
           <AnnotationBox
             name="200"
             nameColor={COLORS.accentB}
@@ -206,39 +207,49 @@ export const Scene4: React.FC = () => {
         </div>
 
         {/* Curved arrows */}
-        {(cbLineP > 0 || dlLineP > 0) && (
-          <svg
-            style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none"}}
-            viewBox="0 0 1080 1920" preserveAspectRatio="none"
-          >
-            <defs style={{ transform: "rotateX(180deg)" }}>
-              <marker id="arrow-cb4" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto">
-                <path d="M1 1 L11 6 L1 11" fill="none" stroke={COLORS.accentC} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              </marker>
-              <marker id="arrow-dl4" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto">
-                <path d="M1 1 L11 6 L1 11" fill="none" stroke={COLORS.accentB} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              </marker>
-            </defs>
-            {cbLineP > 0 && (() => {
-              const TOTAL = 340; const drawn = cbLineP * TOTAL;
-              return (
-                <path d="M 300 1000 C 150 800, 640 875, 550 720" fill="none"
-                  stroke={COLORS.accentC} strokeWidth="4" strokeDasharray="9 7"
-                  strokeDashoffset={TOTAL - drawn} strokeLinecap="round"
-                  markerEnd="url(#arrow-cb4)" opacity={cbLineP} />
-              );
-            })()}
-            {dlLineP > 0 && (() => {
-              const TOTAL = 420; const drawn = dlLineP * TOTAL;
-              return (
-                <path d="M 682 1000 C 850 1000, 850 1310, 440 1310" fill="none"
-                  stroke={COLORS.accentB} strokeWidth="4" strokeDasharray="9 7"
-                  strokeDashoffset={TOTAL - drawn} strokeLinecap="round"
-                  markerEnd="url(#arrow-dl4)" opacity={dlLineP} />
-              );
-            })()}
-          </svg>
-        )}
+        <svg
+          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+          viewBox="0 0 1080 1920" preserveAspectRatio="none"
+        >
+          <defs>
+            <marker id="arrow-cb4" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+              <path d="M 1 1 L 11 6 L 1 11" fill="none" stroke={COLORS.accentC} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </marker>
+            <marker id="arrow-dl4" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+              <path d="M 1 1 L 11 6 L 1 11" fill="none" stroke={COLORS.accentB} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </marker>
+          </defs>
+
+          {/* Arrow 1: callback (Tail at box top, Head at code) */}
+          {cbLineP > 0 && (
+            <path
+              d="M 320 690 C 320 800, 480 680, 550 910"
+              fill="none"
+              stroke={COLORS.accentC}
+              strokeWidth="4"
+              strokeDasharray="9 7"
+              strokeDashoffset={(1 - cbLineP) * 300}
+              strokeLinecap="round"
+              markerEnd="url(#arrow-cb4)"
+              opacity={cbBoxOp} 
+            />
+          )}
+
+          {/* Arrow 2: delay (Tail at box bottom, Head at code) */}
+          {dlLineP > 0 && (
+            <path
+              d="M 520 1250 C 520 1150, 780 1200, 740 985"
+              fill="none"
+              stroke={COLORS.accentB}
+              strokeWidth="4"
+              strokeDasharray="9 7"
+              strokeDashoffset={(1 - dlLineP) * 350}
+              strokeLinecap="round"
+              markerEnd="url(#arrow-dl4)"
+              opacity={dlBoxOp} 
+            />
+          )}
+        </svg>
 
       </div>
     </AbsoluteFill>
