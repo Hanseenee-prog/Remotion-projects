@@ -1,212 +1,263 @@
-// Scene 8 — "Throttle Teaser & Follow"
-// 120 Frames (4s) @ 30fps
+// Scene 9 — "Wrap your function with throttle — only runs every 200ms"
+// 180 frames
 //
-// Sequence:
-//   0–35  : "Want to learn about Throttle next?" text enters and stays.
-//   35–50 : Text fades/slides up as Profile Card springs in.
-//   50–70 : Card springs in (scale 0.7→1, opacity 0→1).
-//   60–74 : Cursor flies to Follow button.
-//   74    : Click — button turns grey, ripple, cursor scale squish.
-//   74–82 : Cursor fades out after click.
-//   74–120: Hold on "Following ✓" state.
+// Two parts:
+//   0–80:  Code window shows throttle usage typing in
+//          "const throttledUpdate = throttle(updateAnimation, 200);"
+//          then "container.addEventListener('scroll', throttledUpdate);"
+//   80–170: Split view — scroll container fires MANY events, but only
+//            periodic pulses (every 200ms ≈ 6 frames) actually reach the
+//            animation engine. Others are greyed out/blocked.
+//   170–180: Fade out
 
 import React from "react";
+
 import {
   AbsoluteFill,
   useCurrentFrame,
   useVideoConfig,
   interpolate,
-  interpolateColors,
   spring,
-  staticFile,
-  Img,
 } from "remotion";
-import { COLORS, FONTS } from "./tokens";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
+import { COLORS, FONTS, CANVAS } from "./tokens";
 
-// ─── ProfileCard — verbatim logic from your request ──────────────────────────
-const CARD_W = 680;
-const CARD_H = 730;
-const AVATAR_R = 110;
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+const easeOutBack = (t: number) => {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+};
+function clamp(v: number, lo = 0, hi = 1) { return Math.min(hi, Math.max(lo, v)); }
+function prog(frame: number, s: number, e: number) { return clamp((frame - s) / (e - s)); }
+function useTyped(text: string, sf: number, ef: number, frame: number) {
+  return text.slice(0, Math.floor(clamp((frame - sf) / (ef - sf)) * text.length));
+}
 
-const ProfileCard: React.FC<{
-  cardScale: number;
-  cardOpacity: number;
-  isClicked: boolean;
-  colorSpring: number;
-  cursorX: number;
-  cursorY: number;
-  cursorClickScale: number;
-  rippleScale: number;
-  rippleOpacity: number;
-  showCursor: boolean;
-}> = ({
-  cardScale, cardOpacity, isClicked, colorSpring,
-  cursorX, cursorY, cursorClickScale, rippleScale, rippleOpacity, showCursor,
-}) => {
-  const btnBg = interpolateColors(colorSpring, [0, 1], ["#0095F6", "#2A2A2A"]);
-  const btnTextC = interpolateColors(colorSpring, [0, 1], ["#FFFFFF", "#AAAAAA"]);
-  const btnText = isClicked ? "Following ✓" : "Follow";
-  const glowOp = interpolate(colorSpring, [0, 1], [0, 0.18]);
+const T: React.FC<{ c: string; children: React.ReactNode }> = ({ c, children }) => (
+  <span style={{ color: c, fontFamily: FONTS.mono, whiteSpace: "pre" }}>{children}</span>
+);
+const FONT = 36;
+const LH   = 1.9;
+
+const CodeWindow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div style={{
+    width: 920, borderRadius: 18, background: COLORS.codeBg,
+    border: "1.5px solid rgba(255,255,255,0.09)", overflow: "hidden",
+    boxShadow: "0 28px 72px rgba(0,0,0,0.75)",
+  }}>
+    <div style={{
+      display: "flex", alignItems: "center", background: "#0D1117",
+      borderBottom: "1px solid rgba(255,255,255,0.06)", paddingLeft: 24, height: 72,
+    }}>
+      <div style={{ display: "flex", gap: 10, marginRight: 28 }}>
+        {["#FF5F57", "#FEBC2E", "#28C840"].map(c => (
+          <div key={c} style={{ width: 18, height: 18, borderRadius: "50%", background: c }} />
+        ))}
+      </div>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10, background: COLORS.codeBg,
+        borderRadius: "8px 8px 0 0", padding: "10px 24px 10px 16px",
+        border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none", marginBottom: -1,
+      }}>
+        <div style={{
+          background: "#C9A227", borderRadius: 5, padding: "2px 8px",
+          fontFamily: FONTS.mono, fontSize: 20, fontWeight: 800,
+          color: "#fff", letterSpacing: "0.04em", textTransform: "uppercase" as const,
+        }}>js</div>
+        <span style={{ fontFamily: FONTS.mono, fontSize: 26, fontWeight: 600, color: COLORS.offWhite }}>app.js</span>
+      </div>
+    </div>
+    <div style={{ padding: "28px 40px 36px" }}>{children}</div>
+  </div>
+);
+
+// Smooth scroll demo — shows events vs actual calls
+const ThrottleDemo: React.FC<{ frame: number }> = ({ frame }) => {
+  const demoFrame = frame - 82;  // relative to demo start
+  if (demoFrame < 0) return null;
+
+  const THROTTLE_INTERVAL = 7;  // frames between allowed calls (~200ms at 30fps)
+  const TOTAL_EVENTS = 28;
 
   return (
     <div style={{
-      width: CARD_W, height: CARD_H,
-      opacity: cardOpacity,
-      transform: `scale(${cardScale})`,
-      transformOrigin: "center center",
-      zIndex: 50,
+      width: 880,
+      background: COLORS.codeBg,
+      border: "1.5px solid rgba(255,255,255,0.09)",
+      borderRadius: 20,
+      padding: "36px 40px",
+      display: "flex",
+      flexDirection: "column",
+      gap: 28,
     }}>
-      <div style={{
-        position: "relative", width: "100%", height: "100%",
-        background: "#121212", borderRadius: 40,
-        border: "1.5px solid rgba(255,255,255,0.08)",
-        boxShadow: `0 40px 120px rgba(0,0,0,0.95), 0 0 60px rgba(0,149,246,${glowOp})`,
-        display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 60, overflow: "hidden",
-      }}>
-        <div style={{ position: "relative", marginBottom: 28 }}>
-          <div style={{
-            width: (AVATAR_R + 14) * 2, height: (AVATAR_R + 14) * 2, borderRadius: "50%",
-            background: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)",
-            padding: 5, display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <div style={{
-              width: (AVATAR_R + 7) * 2, height: (AVATAR_R + 7) * 2, borderRadius: "50%",
-              background: "#121212", padding: 5, display: "flex", alignItems: "center", justifyContent: "center",
+      {/* Label row */}
+      <div style={{ display: "flex", justifyContent: "space-between", fontFamily: FONTS.mono, fontSize: 26, color: COLORS.muted }}>
+        <span>scroll events</span>
+        <span style={{ color: COLORS.accentA }}>actual calls (throttled)</span>
+      </div>
+
+      {/* Event dots row */}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        {Array.from({ length: TOTAL_EVENTS }).map((_, i) => {
+          const evFrame   = i * 3;
+          const isVisible = demoFrame >= evFrame;
+          const isAllowed = i % THROTTLE_INTERVAL === 0;
+
+          if (!isVisible) return null;
+
+          const age = demoFrame - evFrame;
+          const popSpr = clamp(age / 6);
+          const scale  = interpolate(easeOutBack(popSpr), [0, 1], [0, 1]);
+
+          return (
+            <div key={i} style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 6,
+              transform: `scale(${scale})`,
+              transformOrigin: "center bottom",
             }}>
+              {/* Arrow: green if allowed, red X if blocked */}
               <div style={{
-                width: AVATAR_R * 2, height: AVATAR_R * 2, borderRadius: "50%",
-                overflow: "hidden", background: "#333",
+                width: 44, height: 44, borderRadius: "50%",
+                background: isAllowed ? `${COLORS.accentA}20` : `${COLORS.accentC}15`,
+                border: `2.5px solid ${isAllowed ? COLORS.accentA : COLORS.accentC}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 20,
+                boxShadow: isAllowed ? `0 0 12px ${COLORS.accentA}44` : "none",
               }}>
-                <Img
-                  src={staticFile("profile-img.jpg")}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 38%" }}
-                />
+                {isAllowed ? "✓" : "✗"}
               </div>
             </div>
-          </div>
-        </div>
+          );
+        })}
+      </div>
 
-        <div style={{ fontFamily: FONTS.mono, fontSize: 46, fontWeight: 800, color: "#FFFFFF", marginBottom: 10 }}>
-          Hanson Emmanuel
+      {/* Stats */}
+      <div style={{ display: "flex", gap: 32 }}>
+        <div style={{
+          flex: 1, padding: "16px 20px", borderRadius: 12,
+          background: `${COLORS.accentC}12`, border: `1px solid ${COLORS.accentC}40`,
+          display: "flex", flexDirection: "column", gap: 6,
+        }}>
+          <span style={{ fontFamily: FONTS.mono, fontSize: 22, color: COLORS.muted }}>events fired</span>
+          <span style={{ fontFamily: FONTS.mono, fontSize: 40, fontWeight: 800, color: COLORS.accentC }}>
+            {Math.min(TOTAL_EVENTS, Math.floor(demoFrame / 3) + 1)}
+          </span>
         </div>
-        <div style={{ fontFamily: FONTS.mono, fontSize: 34, fontWeight: 500, color: "rgba(255,255,255,0.55)", marginBottom: 80 }}>
-          @hee_codes
-        </div>
-
-        <div style={{ position: "relative" }}>
-          <div style={{
-            backgroundColor: btnBg, color: btnTextC, width: 400, height: 110,
-            borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 40, fontWeight: 700, fontFamily: FONTS.mono,
-            boxShadow: isClicked ? "0 4px 20px rgba(0,0,0,0.5)" : "0 12px 40px rgba(0,149,246,0.5)",
-            position: "relative", overflow: "hidden",
-            border: isClicked ? "2px solid rgba(255,255,255,0.08)" : "none",
-          }}>
-            {isClicked && (
-              <div style={{
-                position: "absolute", width: 120, height: 120, background: "rgba(255,255,255,0.7)",
-                borderRadius: "50%", transform: `scale(${rippleScale})`, opacity: rippleOpacity,
-              }} />
+        <div style={{
+          flex: 1, padding: "16px 20px", borderRadius: 12,
+          background: `${COLORS.accentA}12`, border: `1px solid ${COLORS.accentA}40`,
+          display: "flex", flexDirection: "column", gap: 6,
+        }}>
+          <span style={{ fontFamily: FONTS.mono, fontSize: 22, color: COLORS.muted }}>calls made</span>
+          <span style={{ fontFamily: FONTS.mono, fontSize: 40, fontWeight: 800, color: COLORS.accentA }}>
+            {Math.min(
+              Math.ceil(TOTAL_EVENTS / THROTTLE_INTERVAL),
+              Math.ceil((Math.min(TOTAL_EVENTS, Math.floor(demoFrame / 3) + 1)) / THROTTLE_INTERVAL)
             )}
-            <span style={{ zIndex: 1 }}>{btnText}</span>
-          </div>
-
-          {showCursor && (
-            <div style={{
-              position: "absolute", left: "50%", top: "50%",
-              transform: `translate(${cursorX}px, ${cursorY}px) scale(${cursorClickScale})`,
-              zIndex: 20, fontSize: 90, filter: "drop-shadow(0px 12px 12px rgba(0,0,0,0.5))", rotate: "-10deg",
-            }}>
-              👆
-            </div>
-          )}
+          </span>
         </div>
       </div>
     </div>
   );
 };
 
-// ─── Scene Component ──────────────────────────────────────────────────────────
-
 export const Scene9: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Timing constants
-  const TEASER_OUT = 35;
-  const CARD_START = 45;
-  const CURSOR_IN  = 60;
-  const CLICK_AT   = 74;
-
-  // ── Teaser Animation ──────────────────────────────────────────────────────
-  const teaserSpring = spring({ frame, fps, config: { stiffness: 100 } });
-  const teaserOpacity = interpolate(frame, [0, 10, TEASER_OUT, TEASER_OUT + 10], [0, 1, 1, 0]);
-  const teaserBlur = interpolate(teaserSpring, [0, 1], [20, 0]);
-  const teaserY = interpolate(teaserSpring, [0, 1], [20, 0]) + interpolate(frame, [TEASER_OUT, TEASER_OUT + 10], [0, -40]);
-
-  // ── Card Animation (Starts after teaser) ──────────────────────────────────
-  const cardInSpring = spring({
-    fps, frame: frame - CARD_START,
-    config: { damping: 14, stiffness: 130, mass: 0.9 },
+  const globalOut = interpolate(frame, [165, 180], [1, 0], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
-  const cardScale = interpolate(clamp(cardInSpring), [0, 1], [0.7, 1]);
-  const cardOpacity = interpolate(frame, [CARD_START, CARD_START + 10], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
-  // ── Cursor Movement ──────────────────────────────────────────────────────
-  const cursorMoveSpring = spring({
-    fps, frame: frame - CURSOR_IN,
-    config: { damping: 14, stiffness: 100 },
+  const cursorBlink = Math.floor(frame / 8) % 2 === 0;
+
+  const line1 = "const throttledUpdate = throttle(updateAnimation, 200);";
+  const line2 = "container.addEventListener('scroll', throttledUpdate);";
+
+  const typed1 = useTyped(line1, 8, 52, frame);
+  const typed2 = useTyped(line2, 56, 80, frame);
+  const done1  = typed1.length >= line1.length;
+  const done2  = typed2.length >= line2.length;
+
+  const codeOut = interpolate(frame, [76, 84], [1, 0], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
   });
-  const cursorX = interpolate(clamp(cursorMoveSpring), [0, 1], [380, 0]);
-  const cursorY = interpolate(clamp(cursorMoveSpring), [0, 1], [600, 40]);
-
-  // ── Click Logic ──────────────────────────────────────────────────────────
-  const isClicked = frame >= CLICK_AT;
-  const colorSpring = clamp(isClicked ? spring({ fps, frame: frame - CLICK_AT, config: { damping: 20, stiffness: 120 } }) : 0);
-  const cursorPress = spring({ fps, frame: frame - CLICK_AT, config: { damping: 12, stiffness: 300, mass: 0.5 } });
-  const cursorClickScale = interpolate(cursorPress, [0, 0.5, 1], [1, 0.75, 1], { extrapolateRight: "clamp" });
-  const rippleSpring = spring({ fps, frame: frame - CLICK_AT, config: { damping: 20, stiffness: 60 } });
-  const rippleScale = clamp(rippleSpring) * 5;
-  const rippleOpacity = interpolate(clamp(rippleSpring), [0, 1], [0.6, 0]);
-  const cursorFade = interpolate(frame, [CLICK_AT, CLICK_AT + 8], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const showCursor = frame >= CURSOR_IN && cursorFade > 0;
+  const demoIn = interpolate(frame, [82, 92], [0, 1], {
+    extrapolateLeft: "clamp", extrapolateRight: "clamp",
+  });
 
   return (
-    <AbsoluteFill style={{ background: "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      
-      {/* Teaser Text */}
-      <div style={{
-        position: "absolute",
-        textAlign: "center",
-        opacity: teaserOpacity,
-        filter: `blur(${teaserBlur}px)`,
-        transform: `translateY(${teaserY}px)`,
-        zIndex: 10,
-      }}>
-        <div style={{ fontFamily: FONTS.mono, fontSize: 32, color: COLORS.accentC, fontWeight: 700, letterSpacing: 2, marginBottom: 10 }}>
-          UP NEXT
-        </div>
-        <div style={{ fontFamily: FONTS.display, fontSize: 64, color: "white", fontWeight: 900, maxWidth: 800 }}>
-          Want to learn about <span style={{ color: COLORS.accentB }}>Throttle</span> next?
-        </div>
-      </div>
+    <AbsoluteFill style={{
+      display: "flex", alignItems: "center", justifyContent: "center",
+      background: "transparent", opacity: globalOut,
+    }}>
 
-      {/* Profile Card */}
-      <ProfileCard
-        cardScale={cardScale}
-        cardOpacity={cardOpacity}
-        isClicked={isClicked}
-        colorSpring={colorSpring}
-        cursorX={cursorX}
-        cursorY={cursorY}
-        cursorClickScale={cursorClickScale}
-        rippleScale={rippleScale}
-        rippleOpacity={rippleOpacity}
-        showCursor={showCursor}
-      />
+      {/* Code window — fades out when demo appears */}
+      {frame < 88 && (
+        <div style={{ opacity: codeOut, width: 920 }}>
+          <CodeWindow>
+            {/* Line 1 */}
+            <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, whiteSpace: "pre" }}>
+              {(() => {
+                const chunks = [
+                  { text: "const ", color: COLORS.keyword },
+                  { text: "throttledUpdate", color: COLORS.value },
+                  { text: " = ", color: COLORS.punctuation },
+                  { text: "throttle", color: COLORS.fnName },
+                  { text: "(", color: COLORS.punctuation },
+                  { text: "onScroll", color: COLORS.fnName },
+                  { text: ", ", color: COLORS.punctuation },
+                  { text: "200", color: COLORS.number },
+                  { text: ");", color: COLORS.punctuation },
+                ];
+                let left = typed1.length;
+                return chunks.map((ch, i) => {
+                  if (left <= 0) return null;
+                  const s = ch.text.slice(0, left); left -= ch.text.length;
+                  return <T key={i} c={ch.color}>{s}</T>;
+                });
+              })()}
+              {!done1 && <span style={{ display: "inline-block", width: 3, height: "0.82em", background: COLORS.accentA, marginLeft: 3, verticalAlign: "middle", opacity: cursorBlink ? 1 : 0 }} />}
+            </div>
+
+            {/* Line 2 */}
+            {frame >= 56 && (
+              <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, whiteSpace: "pre" }}>
+                {(() => {
+                  const chunks = [
+                    { text: "container", color: COLORS.value },
+                    { text: ".", color: COLORS.punctuation },
+                    { text: "addEventListener", color: COLORS.fnName },
+                    { text: "(", color: COLORS.punctuation },
+                    { text: "'scroll'", color: COLORS.string },
+                    { text: ", ", color: COLORS.punctuation },
+                    { text: "throttledUpdate", color: COLORS.value },
+                    { text: ");", color: COLORS.punctuation },
+                  ];
+                  let left = typed2.length;
+                  return chunks.map((ch, i) => {
+                    if (left <= 0) return null;
+                    const s = ch.text.slice(0, left); left -= ch.text.length;
+                    return <T key={i} c={ch.color}>{s}</T>;
+                  });
+                })()}
+                {!done2 && done1 && <span style={{ display: "inline-block", width: 3, height: "0.82em", background: COLORS.accentA, marginLeft: 3, verticalAlign: "middle", opacity: cursorBlink ? 1 : 0 }} />}
+              </div>
+            )}
+          </CodeWindow>
+        </div>
+      )}
+
+      {/* Demo — appears after code fades */}
+      {frame >= 82 && (
+        <div style={{ opacity: demoIn }}>
+          <ThrottleDemo frame={frame} />
+        </div>
+      )}
+
     </AbsoluteFill>
   );
 };

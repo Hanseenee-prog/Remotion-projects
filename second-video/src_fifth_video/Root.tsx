@@ -3,7 +3,7 @@ import { Reel, TOTAL_FRAMES } from "./Reel";
 
 export const RemotionRoot: React.FC = () => (
   <Composition
-    id="ThrottleReel"
+    id="Reel"
     component={Reel}
     durationInFrames={TOTAL_FRAMES}
     fps={30}
