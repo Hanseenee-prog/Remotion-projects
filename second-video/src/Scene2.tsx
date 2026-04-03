@@ -1,518 +1,253 @@
-// Scene 2 — "But imagine if every scroll call runs heavy logic…
-//             like updating animations or tracking scroll position —
-//             your app would lag fast."
-//
-// Visual: Scroll container on the right. On the left, a live "scroll-driven
-// animation" — a progress bar and an animated element that react to scrollPos.
-// Each scroll event fires a "heavy work" spike. FPS meter drops as spikes pile.
-// No server, no Avengers. Just scroll → animation lag.
+// Scene 2 — "But imagine if every call runs heavy logic…"
+// 255 frames total @ 30fps
 
 import React from "react";
 import {
   AbsoluteFill,
   useCurrentFrame,
   interpolate,
-  spring,
-  useVideoConfig,
 } from "remotion";
 import { COLORS, FONTS } from "./tokens";
+import { ROW_STYLES } from "./Scene1"; // Inheriting the accent styles
 
 function clamp(v: number, lo = 0, hi = 1) { return Math.min(hi, Math.max(lo, v)); }
-const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+const easeOut  = (t: number) => 1 - Math.pow(1 - t, 3);
+const easeIn   = (t: number) => t * t * t;
 function prog(frame: number, s: number, e: number) { return clamp((frame - s) / (e - s)); }
 
-// ── Timing ─────────────────────────────────────────────────────────────────────
-const EVENTS      = 10;
-const EVENT_START = 18;
-const EVENT_INT   = 12;   // rapid-fire
-const eventFrame  = (i: number) => EVENT_START + i * EVENT_INT;
+// ── Layout ─────────────────────────────────────────────────────────────────────
+const CX = 540;
+const CY = 860;   
+const CW = 740;
+const CH = 520;
 
-// ── Scroll container (same style, smaller, on the right) ──────────────────────
-const ScrollMock: React.FC<{ scrollPos: number; active: boolean }> = ({
-  scrollPos, active,
-}) => {
-  const TRACK_H  = 260;
-  const THUMB_H  = 70;
-  const thumbTop = scrollPos * (TRACK_H - THUMB_H);
-  const ROWS = 7;
-  const contentOffset = scrollPos * (ROWS * 60 - 200);
+// ── Timing ─────────────────────────────────────────────────────────────────────
+const SWAP_OUT_START = 110; 
+const SWAP_OUT_END   = 130; 
+const SWAP_IN_START  = 120; 
+const SWAP_IN_END    = 140; 
+
+// Slower stacking scroll, hits roughly ~4 cards max before switching
+const phase1Scroll = (frame: number) => clamp(frame / 160); 
+const phase2Scroll = (frame: number) => clamp((frame - 110) / 140);
+
+// Drops quickly into red and stays there to match the shaking logic
+const getFps = (frame: number) => {
+  const p = clamp(frame / 60);
+  const base = interpolate(p, [0, 1], [60, 15]);
+  const noise = Math.sin(frame * 2.3) * 2;
+  return Math.max(8, Math.round(base + noise));
+};
+
+// ── Phase 1: Stacking Cards Container ───────────────────────────────────────
+const StackingContainer: React.FC<{ sp: number }> = ({ sp }) => {
+  // sp goes to ~0.7, meaning offset goes to ~392, letting ~4 cards stack
+  const scrollOffset = sp * 560; 
 
   return (
     <div style={{
-      width: 380,
-      height: 400,
-      background: "#0D1117",
-      border: `2px solid ${active ? COLORS.accentB : "rgba(255,255,255,0.12)"}`,
-      borderRadius: 20,
-      overflow: "hidden",
-      boxShadow: active
-        ? `0 0 32px ${COLORS.accentB}22, 0 24px 60px rgba(0,0,0,0.5)`
-        : "0 24px 60px rgba(0,0,0,0.5)",
-      display: "flex",
-      flexDirection: "row",
+      width: CW, height: CH, background: "#0D1117",
+      border: "2px solid rgba(255,255,255,0.12)", borderRadius: 22, overflow: "hidden",
+      boxShadow: "0 32px 80px rgba(0,0,0,0.55)", position: "relative", display: "flex"
     }}>
-      <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-        <div style={{
-          position: "absolute",
-          top: -contentOffset,
-          left: 0, right: 0,
-          padding: "18px 20px",
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-        }}>
-          {Array.from({ length: ROWS }).map((_, i) => (
+      <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+        {Array.from({ length: 12 }).map((_, i) => {
+          const s = ROW_STYLES[i % ROW_STYLES.length];
+          const stackedTop = i * 20; 
+          const currentTop = Math.max(stackedTop, 40 + i * 140 - scrollOffset);
+          
+          return (
             <div key={i} style={{
-              height: 44,
-              borderRadius: 10,
-              background: i % 2 === 0
-                ? "rgba(121,192,255,0.07)"
-                : "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.06)",
-              display: "flex",
-              alignItems: "center",
-              paddingLeft: 14,
-              gap: 10,
+              position: "absolute", top: currentTop, left: "50%", transform: "translateX(-50%)",
+              width: CW - 80, height: 120, background: s.bg, border: `1.5px solid ${s.border}`,
+              borderRadius: 14, display: "flex", alignItems: "center", paddingLeft: 20, gap: 16,
+              zIndex: 12 - i, 
             }}>
-              <div style={{
-                width: 6, height: 6, borderRadius: "50%",
-                background: [COLORS.accentA, COLORS.accentB, COLORS.accentC, COLORS.accentD][i % 4],
-                opacity: 0.6,
-              }} />
-              <div style={{
-                height: 8, borderRadius: 4,
-                background: "rgba(255,255,255,0.06)",
-                width: `${50 + (i * 17) % 35}%`,
-              }} />
+              <div style={{ width: 14, height: 14, borderRadius: "50%", background: s.dot, opacity: 0.8 }} />
+              <div style={{ width: "40%", height: 16, borderRadius: 6, background: "rgba(255,255,255,0.06)" }} />
+              <div style={{ width: "20%", height: 16, borderRadius: 6, background: "rgba(255,255,255,0.03)", marginLeft: "auto", marginRight: 24 }} />
             </div>
-          ))}
-        </div>
-        <div style={{
-          position: "absolute", bottom: 12, left: 16,
-          fontFamily: FONTS.mono, fontSize: 20, color: COLORS.muted,
-        }}>
-          scrollY:{" "}
-          <span style={{ color: COLORS.accentB, fontWeight: 700 }}>
-            {Math.round(scrollPos * 480)}
-          </span>
-        </div>
+          );
+        })}
       </div>
-      <div style={{
-        width: 14, background: "rgba(255,255,255,0.04)",
-        borderLeft: "1px solid rgba(255,255,255,0.07)",
-        position: "relative", flexShrink: 0,
-      }}>
+      
+      {/* Scrollbar */}
+      <div style={{ width: 16, background: "rgba(255,255,255,0.04)", borderLeft: "1px solid rgba(255,255,255,0.07)", position: "relative", flexShrink: 0 }}>
         <div style={{
-          position: "absolute", top: thumbTop, left: 2, right: 2,
-          height: THUMB_H, borderRadius: 5,
-          background: active ? COLORS.accentB : "rgba(255,255,255,0.2)",
-          boxShadow: active ? `0 0 8px ${COLORS.accentB}88` : "none",
+          position: "absolute", top: sp * (CH - 80), left: 2, right: 2, height: 60, borderRadius: 5,
+          background: "rgba(255,255,255,0.22)",
         }} />
       </div>
     </div>
   );
 };
 
-// ── Scroll-driven animation panel (left side) ─────────────────────────────────
-// Shows 3 things that "update" on each scroll:
-//  1. A progress bar that fills with scrollPos
-//  2. A circle that moves horizontally
-//  3. A box that rotates / changes color
-const AnimPanel: React.FC<{
-  scrollPos: number;
-  spikePulse: number;   // 0–1: how fresh the last spike is
-  lagP: number;         // 0–1: cumulative lag level
-}> = ({ scrollPos, spikePulse, lagP }) => {
-  // When spiking, the animation "stutters" — slightly wrong values
-  const stutter = spikePulse * (Math.random() > 0.5 ? 1 : -1) * 0.08;
-  const displayPos = clamp(scrollPos + (lagP > 0.5 ? stutter : 0));
+// ── Phase 2: Tracker container ─────────────────────────────────────────────────
+const TrackerContainer: React.FC<{ sp: number; frame: number }> = ({ sp, frame }) => {
+  const progressPct = Math.round(sp * 100);
+  const scrollOffset = sp * 800;
 
-  const circleX = interpolate(displayPos, [0, 1], [0, 240]);
-  const barFill  = displayPos * 100;
-  const boxRot   = displayPos * 180;
-  const boxColor = `hsl(${120 + displayPos * 200}, 70%, 55%)`;
+  // offsetHeight constantly shifting slightly to mimic heavy DOM recalculations
+  const dynamicOffsetHeight = 2840 + Math.floor(Math.sin(frame * 1.5) * 6);
 
   return (
-    <div style={{
-      width: 420,
-      background: COLORS.codeBg,
-      border: `2px solid ${lagP > 0.6 ? COLORS.accentC : "rgba(255,255,255,0.10)"}`,
-      borderRadius: 20,
-      padding: "28px 28px",
-      boxShadow: lagP > 0.6
-        ? `0 0 32px ${COLORS.accentC}22`
-        : "0 24px 60px rgba(0,0,0,0.4)",
-      display: "flex",
-      flexDirection: "column",
-      gap: 28,
-    }}>
-      {/* Panel title */}
+    <div style={{ position: "relative" }}>
       <div style={{
-        fontFamily: FONTS.mono,
-        fontSize: 22,
-        color: COLORS.muted,
-        letterSpacing: "0.06em",
-        textTransform: "uppercase" as const,
-        textAlign: "center",
+        width: CW, height: CH, background: "#0D1117",
+        border: "2px solid rgba(255,255,255,0.12)", borderRadius: 22, overflow: "hidden",
+        boxShadow: "0 32px 80px rgba(0,0,0,0.55)", display: "flex", flexDirection: "column",
       }}>
-        scroll-driven animation
-      </div>
-
-      {/* 1. Progress bar */}
-      <div>
-        <div style={{
-          fontFamily: FONTS.mono, fontSize: 20, color: COLORS.muted,
-          marginBottom: 10,
-        }}>
-          progress
-        </div>
-        <div style={{
-          width: "100%", height: 18, borderRadius: 9,
-          background: "rgba(255,255,255,0.07)", overflow: "hidden",
-        }}>
+        <div style={{ height: 14, background: "rgba(255,255,255,0.06)", flexShrink: 0, position: "relative", zIndex: 10 }}>
           <div style={{
-            height: "100%",
-            width: `${barFill}%`,
-            background: `linear-gradient(90deg, ${COLORS.accentA}, ${COLORS.accentB})`,
-            borderRadius: 9,
-            boxShadow: `0 0 12px ${COLORS.accentA}66`,
+            position: "absolute", top: 0, left: 0, height: "100%", width: `${sp * 100}%`,
+            background: COLORS.accentA, borderRadius: "0 4px 4px 0",
           }} />
-        </div>
-        <div style={{
-          fontFamily: FONTS.mono, fontSize: 20, color: COLORS.accentA,
-          marginTop: 8, textAlign: "right",
-        }}>
-          {Math.round(barFill)}%
-        </div>
-      </div>
-
-      {/* 2. Moving circle */}
-      <div>
-        <div style={{
-          fontFamily: FONTS.mono, fontSize: 20, color: COLORS.muted,
-          marginBottom: 12,
-        }}>
-          translateX
-        </div>
-        <div style={{
-          width: "100%", height: 48, borderRadius: 10,
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.07)",
-          position: "relative",
-        }}>
           <div style={{
-            position: "absolute",
-            left: circleX,
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: 36,
-            height: 36,
-            borderRadius: "50%",
-            background: COLORS.accentB,
-            boxShadow: `0 0 16px ${COLORS.accentB}88`,
-          }} />
-        </div>
-        <div style={{
-          fontFamily: FONTS.mono, fontSize: 20, color: COLORS.accentB,
-          marginTop: 8,
-        }}>
-          {Math.round(circleX)}px
-        </div>
-      </div>
-
-      {/* 3. Rotating box */}
-      <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-        <div>
-          <div style={{
-            fontFamily: FONTS.mono, fontSize: 20, color: COLORS.muted,
-            marginBottom: 12,
+            position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+            fontFamily: FONTS.mono, fontSize: 16, color: COLORS.white, fontWeight: 700,
           }}>
-            rotate + color
+            {progressPct}%
           </div>
-          <div style={{
-            width: 60, height: 60, borderRadius: 12,
-            background: boxColor,
-            transform: `rotate(${boxRot}deg)`,
-            boxShadow: `0 0 20px ${boxColor}66`,
-          }} />
         </div>
-        <div style={{
-          flex: 1,
-          fontFamily: FONTS.mono,
-          fontSize: 20,
-          color: COLORS.muted,
-          lineHeight: 1.7,
-        }}>
-          <div><span style={{ color: COLORS.value }}>rotate</span>({Math.round(boxRot)}deg)</div>
-          <div><span style={{ color: COLORS.value }}>color</span>: hsl({Math.round(120 + displayPos * 200)}, 70%)</div>
+
+        <div style={{ flex: 1, position: "relative", display: "flex" }}>
+          <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+             {Array.from({ length: 12 }).map((_, i) => {
+               const s = ROW_STYLES[i % ROW_STYLES.length];
+               return (
+                 <div key={i} style={{
+                   position: "absolute", top: 40 + i * 140 - scrollOffset, left: "50%", transform: "translateX(-50%)",
+                   width: CW - 80, height: 120, background: s.bg, border: `1.5px solid ${s.border}`,
+                   borderRadius: 14, display: "flex", alignItems: "center", paddingLeft: 20, gap: 16,
+                 }}>
+                   <div style={{ width: 14, height: 14, borderRadius: "50%", background: s.dot, opacity: 0.8 }} />
+                   <div style={{ width: "40%", height: 16, borderRadius: 6, background: "rgba(255,255,255,0.06)" }} />
+                 </div>
+               )
+             })}
+          </div>
+          {/* Scrollbar */}
+          <div style={{ width: 16, background: "rgba(255,255,255,0.04)", borderLeft: "1px solid rgba(255,255,255,0.07)", position: "relative", flexShrink: 0 }}>
+            <div style={{
+              position: "absolute", top: sp * (CH - 14 - 80), left: 2, right: 2, height: 60, borderRadius: 5,
+              background: "rgba(255,255,255,0.22)",
+            }} />
+          </div>
         </div>
       </div>
 
-      {/* Heavy work indicator */}
-      {spikePulse > 0.05 && (
-        <div style={{
-          opacity: spikePulse,
-          padding: "12px 18px",
-          borderRadius: 10,
-          background: `${COLORS.accentC}14`,
-          border: `1px solid ${COLORS.accentC}55`,
-          fontFamily: FONTS.mono,
-          fontSize: 22,
-          color: COLORS.accentC,
-          textAlign: "center",
-        }}>
-          ⚙️ recalculating layout…
-        </div>
-      )}
+      {/* External Readouts updated to show fluctuating values */}
+      <div style={{
+        position: "absolute", bottom: -90, left: 0, right: 0,
+        display: "flex", justifyContent: "center", gap: 30,
+      }}>
+         <div style={{ background: "rgba(13,17,23,0.9)", padding: "14px 24px", borderRadius: 12, border: `1.5px solid ${COLORS.accentB}55`}}>
+           <span style={{ fontFamily: FONTS.mono, fontSize: 24, color: COLORS.muted }}>scrollY: </span>
+           <span style={{ fontFamily: FONTS.mono, fontSize: 28, color: COLORS.accentB, fontWeight: "bold" }}>{Math.round(sp * 2840)}px</span>
+         </div>
+         <div style={{ background: "rgba(13,17,23,0.9)", padding: "14px 24px", borderRadius: 12, border: `1.5px solid ${COLORS.muted}55`}}>
+           <span style={{ fontFamily: FONTS.mono, fontSize: 24, color: COLORS.muted }}>offsetHeight: </span>
+           <span style={{ fontFamily: FONTS.mono, fontSize: 28, color: COLORS.white, fontWeight: "bold" }}>{dynamicOffsetHeight}px</span>
+         </div>
+      </div>
     </div>
-  );
-};
-
-// ── Heavy work spike bar ────────────────────────────────────────────────────────
-// Each event creates a spike on a mini bar chart at the bottom
-const SpikeBar: React.FC<{ idx: number; frame: number }> = ({ idx, frame }) => {
-  const sf  = eventFrame(idx);
-  const age = frame - sf;
-  if (age < 0) return null;
-
-  const heights = [62, 80, 55, 90, 74, 88, 66, 92, 70, 85];
-  const h = heights[idx % heights.length];
-
-  // Bar rises then slowly settles
-  const riseP = clamp(age / 8);
-  const fallP = age > 30 ? clamp((age - 30) / 40) : 0;
-  const barH  = h * easeOut(riseP) * (1 - fallP * 0.7);
-
-  return (
-    <div style={{
-      width: 42,
-      height: barH,
-      borderRadius: "6px 6px 0 0",
-      background: `linear-gradient(to top, ${COLORS.accentC}, ${COLORS.accentC}88)`,
-      boxShadow: riseP > 0.5 ? `0 0 12px ${COLORS.accentC}66` : "none",
-      alignSelf: "flex-end",
-    }} />
   );
 };
 
 // ── Scene ──────────────────────────────────────────────────────────────────────
 export const Scene2: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
 
-  const eventsTriggered = Array.from({ length: EVENTS }).filter(
-    (_, i) => frame >= eventFrame(i)
-  ).length;
+  const sp1 = phase1Scroll(frame);
+  const sp2 = phase2Scroll(frame);
+  const fps_disp = getFps(frame);
+  const isRedZone = fps_disp < 25;
+  const fpsColor = fps_disp > 45 ? COLORS.accentA : fps_disp > 25 ? "#F0C674" : COLORS.accentC;
+  
+  // Moderate shaking effect when in the red zone
+  const shakeX = isRedZone ? Math.sin(frame * 2.5) * 3 : 0;
 
-  const scrollPos = clamp(eventsTriggered / EVENTS);
+  // Transitions
+  const phase1ExitP  = easeIn(prog(frame, SWAP_OUT_START, SWAP_OUT_END));
+  const phase1X      = interpolate(phase1ExitP, [0, 1], [0, -(1080 + CW / 2)]);
+  const phase1O      = interpolate(phase1ExitP, [0.6, 1], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
-  const isActive = Array.from({ length: EVENTS }).some((_, i) => {
-    const age = frame - eventFrame(i);
-    return age >= 0 && age < 12;
-  });
+  const phase2EnterP = easeOut(prog(frame, SWAP_IN_START, SWAP_IN_END));
+  const phase2X      = interpolate(phase2EnterP, [0, 1], [1080 + CW / 2, 0]);
+  const phase2O      = interpolate(phase2EnterP, [0, 0.3], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
-  // How fresh is the most recent spike (0=stale, 1=just fired)
-  const spikePulse = Array.from({ length: EVENTS }).reduce<number>((acc, _, i) => {
-    const age = frame - eventFrame(i);
-    if (age >= 0 && age < 24) {
-      return Math.max(acc, interpolate(age, [0, 4, 24], [0, 1, 0]));
-    }
-    return acc;
-  }, 0);
-
-  // Cumulative lag: rises as events pile up
-  const lagP = clamp(eventsTriggered / EVENTS);
-
-  // FPS: drops as events accumulate
-  const fpsBase   = interpolate(lagP, [0, 0.4, 0.8, 1], [60, 45, 22, 10]);
-  const fpsNoise  = Math.sin(frame * 1.1) * 4 * lagP;
-  const fps_disp  = Math.max(7, Math.round(fpsBase + fpsNoise));
-  const fpsColor  = fps_disp > 45 ? COLORS.accentA : fps_disp > 25 ? "#F0C674" : COLORS.accentC;
-
-  // Scene fade out
-  const sceneFade = interpolate(frame, [148, 163], [1, 0], {
-    extrapolateLeft: "clamp", extrapolateRight: "clamp",
-  });
-
-  // Recoil on scroll container
-  const recoilY = Array.from({ length: EVENTS }).reduce<number>((acc, _, i) => {
-    const age = frame - eventFrame(i);
-    if (age >= 0 && age < 12) {
-      return Math.max(acc, interpolate(age, [0, 3, 12], [0, 14, 0]));
-    }
-    return acc;
-  }, 0);
-
-  const entranceO = easeOut(clamp(prog(frame, 0, 20) * 4));
+  const title1O = interpolate(frame, [SWAP_OUT_START-10, SWAP_OUT_START], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const title2O = interpolate(frame, [SWAP_IN_START+5, SWAP_IN_START+15], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   return (
-    <AbsoluteFill style={{
-      background: "transparent",
-      opacity: sceneFade,
-      overflow: "hidden",
-    }}>
+    <AbsoluteFill style={{ background: "transparent", overflow: "hidden" }}>
 
-      {/* ── Main content: two panels side by side, centered vertically ────────── */}
-      <div style={{
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 44,
-        opacity: entranceO,
-      }}>
-
-        {/* Left: scroll-driven animation panel */}
-        <AnimPanel scrollPos={scrollPos} spikePulse={spikePulse} lagP={lagP} />
-
-        {/* Right: scroll container */}
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 18,
-          transform: `translateY(${recoilY}px)`,
-        }}>
-          {/* Code label above */}
-          <div style={{
-            fontFamily: FONTS.mono,
-            fontSize: 22,
-            color: COLORS.muted,
-            textAlign: "center",
-            letterSpacing: "0.02em",
-          }}>
-            <span style={{ color: COLORS.value }}>el</span>
-            <span style={{ color: COLORS.punctuation }}>.</span>
-            <span style={{ color: COLORS.fnName }}>addEventListener</span>
-            <span style={{ color: COLORS.punctuation }}>(</span>
-            <span style={{ color: COLORS.string }}>'scroll'</span>
-            <span style={{ color: COLORS.punctuation }}>, </span>
-            <span style={{ color: COLORS.fnName }}>updateAnimation</span>
-            <span style={{ color: COLORS.punctuation }}>)</span>
+      {/* Titles moved down halfway to container */}
+      <div style={{ position: "absolute", top: 400, left: 0, right: 0, display: "flex", justifyContent: "center", alignItems: "center", zIndex: 40 }}>
+        <div style={{ position: "absolute", opacity: title1O, textAlign: "center" }}>
+          <div style={{ fontFamily: FONTS.display, fontSize: 50, fontWeight: 800, color: COLORS.white, letterSpacing: "-0.02em" }}>
+            Parallax Pile-up
           </div>
-          <ScrollMock scrollPos={scrollPos} active={isActive} />
-
-          {/* Arrow between panels (conceptual: scroll → updates anim) */}
-          <div style={{
-            position: "absolute",
-            left: -60,
-            top: "50%",
-            transform: "translateY(-50%)",
-            display: "flex",
-            alignItems: "center",
-            gap: 0,
-            pointerEvents: "none",
-          }}>
-            {/* Arrow shaft */}
-            <div style={{
-              width: 60,
-              height: 3,
-              background: `rgba(255,255,255,0.25)`,
-              borderRadius: 2,
-              position: "relative",
-            }}>
-              {/* Arrow head */}
-              <div style={{
-                position: "absolute",
-                left: -1,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 0,
-                height: 0,
-                borderTop: "7px solid transparent",
-                borderBottom: "7px solid transparent",
-                borderRight: "12px solid rgba(255,255,255,0.25)",
-              }} />
-            </div>
+        </div>
+        <div style={{ position: "absolute", opacity: title2O, textAlign: "center" }}>
+          <div style={{ fontFamily: FONTS.display, fontSize: 50, fontWeight: 800, color: COLORS.white, letterSpacing: "-0.02em" }}>
+            Tracking Scroll Position
           </div>
         </div>
       </div>
 
-      {/* ── Heavy work spike bars (bottom center) ─────────────────────────────── */}
       <div style={{
-        position: "absolute",
-        bottom: 220,
-        left: "50%",
-        transform: "translateX(-50%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 12,
-        width: 700,
+        position: "absolute", top: CY, left: CX + phase1X,
+        transform: "translate(-50%, -50%)", opacity: phase1O, zIndex: 10,
       }}>
-        {/* FPS meter */}
+        <StackingContainer sp={sp1} />
+      </div>
+
+      <div style={{
+        position: "absolute", top: CY, left: CX + phase2X,
+        transform: "translate(-50%, -50%)", opacity: phase2O, zIndex: 10,
+      }}>
+        <TrackerContainer sp={sp2} frame={frame} />
+      </div>
+
+      {/* Performance bar moved up */}
+      <div style={{
+        position: "absolute", bottom: 300, left: "50%",
+        transform: `translateX(calc(-50% + ${shakeX}px))`,
+        width: 760, zIndex: 30,
+      }}>
         <div style={{
-          width: "100%",
-          padding: "18px 24px",
-          background: "rgba(22,27,34,0.85)",
-          border: `2px solid ${fpsColor}44`,
-          borderRadius: 16,
-          display: "flex",
-          alignItems: "center",
-          gap: 20,
+          padding: "18px 24px", background: "rgba(13,17,23,0.92)",
+          border: `2px solid ${fpsColor}44`, borderRadius: 16, display: "flex", alignItems: "center", gap: 18,
+          boxShadow: `0 0 32px ${fpsColor}18`,
         }}>
-          <div style={{
-            fontFamily: FONTS.mono, fontSize: 24, fontWeight: 700, color: COLORS.white,
-            flexShrink: 0,
-          }}>
+          <span style={{ fontFamily: FONTS.mono, fontSize: 24, fontWeight: 700, color: COLORS.white, flexShrink: 0 }}>
             FPS
-          </div>
+          </span>
           <div style={{
-            flex: 1, height: 12, borderRadius: 6,
-            background: "rgba(255,255,255,0.08)", overflow: "hidden",
+            flex: 1, height: 14, borderRadius: 7, background: "rgba(255,255,255,0.08)", overflow: "hidden",
           }}>
             <div style={{
-              height: "100%",
-              width: `${(fps_disp / 60) * 100}%`,
-              background: fpsColor,
-              borderRadius: 6,
-              boxShadow: `0 0 8px ${fpsColor}88`,
+              height: "100%", width: `${(fps_disp / 60) * 100}%`,
+              background: fpsColor, borderRadius: 7, boxShadow: `0 0 10px ${fpsColor}66`,
             }} />
           </div>
-          <div style={{
-            fontFamily: FONTS.mono, fontSize: 28, fontWeight: 800,
-            color: fpsColor, minWidth: 80, textAlign: "right",
+          <span style={{
+            fontFamily: FONTS.mono, fontSize: 30, fontWeight: 800, color: fpsColor, minWidth: 90, textAlign: "right",
           }}>
-            {fps_disp} {fps_disp < 25 ? "🐢" : fps_disp < 45 ? "⚠️" : "✓"}
-          </div>
+            {fps_disp}
+          </span>
         </div>
 
-        {/* Spike bars */}
-        <div style={{
-          display: "flex",
-          alignItems: "flex-end",
-          gap: 8,
-          height: 100,
-          width: "100%",
-          paddingTop: 4,
-        }}>
-          {Array.from({ length: EVENTS }).map((_, i) => (
-            <SpikeBar key={i} idx={i} frame={frame} />
-          ))}
+        {isRedZone && (
           <div style={{
-            fontFamily: FONTS.mono, fontSize: 20, color: COLORS.muted,
-            alignSelf: "center", marginLeft: 8, whiteSpace: "nowrap",
+            marginTop: 14, textAlign: "center", fontFamily: FONTS.mono, fontSize: 26,
+            fontWeight: 800, color: COLORS.accentC, opacity: 1,
           }}>
-            updateAnimation() calls
-          </div>
-        </div>
-
-        {eventsTriggered >= 6 && (
-          <div style={{
-            fontFamily: FONTS.mono,
-            fontSize: 26,
-            fontWeight: 800,
-            color: COLORS.accentC,
-            opacity: easeOut(prog(frame, eventFrame(5), eventFrame(5) + 16)),
-          }}>
-            {eventsTriggered} heavy calls — app lags! 🔴
+            recalculating... 🔴
           </div>
         )}
       </div>
-
     </AbsoluteFill>
   );
 };

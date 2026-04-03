@@ -197,7 +197,7 @@ export const Scene4: React.FC = () => {
         </div>
 
         {/* Annotation: delay (below) */}
-        <div style={{ position: "absolute", bottom: 500, width: "52.4%" }}>
+        <div style={{ position: "absolute", bottom: 540, width: "52.4%" }}>
           <AnnotationBox
             name="200"
             nameColor={COLORS.accentB}

@@ -23,7 +23,7 @@ const easeOutBack = (t: number) => {
 function clamp(v: number, lo = 0, hi = 1) { return Math.min(hi, Math.max(lo, v)); }
 function prog(frame: number, start: number, end: number) { return clamp((frame - start) / (end - start)); }
 
-const TIMELINE_W   = 460;
+const TIMELINE_W   = 440;
 // Throttle: fires at regular intervals (every 200ms), ignores in-between events
 const SCROLL_SPIKES = [0.05, 0.12, 0.19, 0.26, 0.33, 0.41, 0.49, 0.57, 0.65, 0.73];
 const ALLOWED_FIRES = [0.05, 0.26, 0.49, 0.73]; // only these get through
@@ -117,13 +117,13 @@ export const Scene3: React.FC = () => {
             {/* Track */}
             <div style={{
               position: "absolute", top: 148, left: 0,
-              width: TIMELINE_W - 80, height: 4,
+              width: TIMELINE_W - 80 - 80, height: 4,
               background: "rgba(255,255,255,0.12)", borderRadius: 2,
             }} />
             {/* Sweep fill */}
             <div style={{
               position: "absolute", top: 148, left: 0,
-              width: sweepP * (TIMELINE_W - 80),
+              width: sweepP * (TIMELINE_W - 80 - 80),
               height: 4, background: COLORS.accentA,
               borderRadius: 2, boxShadow: `0 0 10px ${COLORS.accentA}`,
             }} />
@@ -172,13 +172,14 @@ export const Scene3: React.FC = () => {
           </div>
 
           {/* Gap */}
-          <div style={{ width: 16, flexShrink: 0 }} />
+          <div style={{ width: 0, flexShrink: 0 }} />
 
           {/* Clock */}
           <div style={{
             display: "flex", flexDirection: "column",
             alignItems: "center", gap: 10,
             opacity: clockOpacity, flexShrink: 0, width: 120,
+            position: "relative", left: -30,
           }}>
             <span style={{
               fontSize: 90, lineHeight: 1,
