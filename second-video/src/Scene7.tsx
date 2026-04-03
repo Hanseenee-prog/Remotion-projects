@@ -1,12 +1,13 @@
 // Scene 7 — "Check the flag, call callback, turn flag off"
 // 240 frames
 //
-// Types in:
-//   if (isAllowed) {
-//     callback(...args);
-//     isAllowed = false;
-//   }
-// Then highlights each piece with dimming phases.
+// Updated Sequence:
+//   10–110 : Phase 1 — "if (isAllowed) { }" types (10-40) and highlights
+//   110–125: Restore — Full brightness
+//   125–165: Phase 2 — "callback(...args);" types (125-145) and highlights
+//   165–175: Restore — Full brightness
+//   175–228: Phase 3 — "isAllowed = false;" types (175-185) and highlights
+//   228–240: Global fade out
 
 import React from "react";
 import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
@@ -67,35 +68,29 @@ export const Scene7: React.FC = () => {
 
   const cursorBlink = Math.floor(frame / 8) % 2 === 0;
 
-  // Typing schedule
+  // Typing strings
   const ifText       = "    if (isAllowed) {";
   const callbackText = "      callback(...args);";
   const flagText     = "      isAllowed = false;";
-  const closeText    = "    }";
 
-  const typed1 = useTyped(ifText,       10, 38, frame);
-  const typed2 = useTyped(callbackText, 42, 72, frame);
-  const typed3 = useTyped(flagText,     78, 108, frame);
+  // Sequences and Timings — Keeping your updated useTyped frames
+  const typed1 = useTyped(ifText,       10, 40,  frame);
+  const typed2 = useTyped(callbackText, 125, 145, frame);
+  const typed3 = useTyped(flagText,     175, 185, frame);
 
   const done1 = typed1.length >= ifText.length;
   const done2 = typed2.length >= callbackText.length;
   const done3 = typed3.length >= flagText.length;
 
-  // Highlight phases:
-  // Phase A (frame 120–175): highlight "if (isAllowed)" check — dims rest
-  // Phase B (frame 175–220): highlight "callback(...args);" — dims rest
-  // Phase C (frame 220–240): restore all (global fade takes over)
+  // Opacity States — Updated to fit the sequence change
+  const isPhase1 = frame >= 10 && frame < 110;
+  const isPhase2 = frame >= 125 && frame < 165;
+  const isPhase3 = frame >= 175 && frame < 228;
 
-  const phaseA = easeOut(prog(frame, 120, 134)) * (1 - easeOut(prog(frame, 168, 180)));
-  const phaseB = easeOut(prog(frame, 178, 192)) * (1 - easeOut(prog(frame, 216, 228)));
-  const phaseC = easeOut(prog(frame, 130, 145)) * (1 - easeOut(prog(frame, 168, 180)));
-
-  const anyHL = phaseA > 0.1 || phaseB > 0.1 || phaseC > 0.1;
-  const baseDim = anyHL ? DIM : 1;
-
-  const ifOp       = phaseA > 0.1 ? 1 : baseDim;
-  const callbackOp = phaseB > 0.1 ? 1 : baseDim;
-  const flagOffOp  = phaseC > 0.1 ? 1 : baseDim;
+  const baseDim    = (isPhase1 || isPhase2 || isPhase3) ? DIM : 1;
+  const ifOp       = isPhase1 ? 1 : baseDim;
+  const callbackOp = isPhase2 ? 1 : baseDim;
+  const flagOffOp  = isPhase3 ? 1 : baseDim;
 
   return (
     <AbsoluteFill style={{
@@ -150,7 +145,7 @@ export const Scene7: React.FC = () => {
           )}
 
           {/* callback(...args); */}
-          {frame >= 42 && (
+          {frame >= 55 && (
             <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, whiteSpace: "pre", opacity: callbackOp }}>
               {(() => {
                 const chunks = [
@@ -173,7 +168,7 @@ export const Scene7: React.FC = () => {
           )}
 
           {/* isAllowed = false; */}
-          {frame >= 78 && (
+          {frame >= 145 && (
             <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, whiteSpace: "pre", opacity: flagOffOp }}>
               {(() => {
                 const chunks = [
@@ -194,18 +189,18 @@ export const Scene7: React.FC = () => {
             </div>
           )}
 
-          {/* } */}
-          {done3 && (
-            <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, color: COLORS.punctuation, opacity: baseDim }}>
-              {"    }"}
+          {/* } brace for if block */}
+          {done1 && (
+            <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, color: COLORS.punctuation, opacity: ifOp, paddingLeft: "4ch" }}>
+              {"}"}
             </div>
           )}
 
-          {/* }; */}
+          {/* }; brace for return arrow fn */}
           <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, color: COLORS.punctuation, opacity: baseDim, paddingLeft: "2ch" }}>
             {"};"}
           </div>
-          {/* } */}
+          {/* } brace for function throttle */}
           <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, color: COLORS.punctuation, opacity: baseDim }}>
             {"}"}
           </div>
