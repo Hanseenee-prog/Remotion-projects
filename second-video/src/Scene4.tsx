@@ -125,7 +125,7 @@ export const Scene4: React.FC = () => {
       }}>
 
         {/* Annotation: callback (above) */}
-        <div style={{ position: "absolute", width: "82.6%", top: 600 }}>
+        <div style={{ position: "absolute", width: "85%", top: 570 }}>
           <AnnotationBox
             name="updateAnimation()"
             nameColor={COLORS.accentC}
@@ -138,48 +138,47 @@ export const Scene4: React.FC = () => {
         <div style={{ ...fadeUp(frame, 14, 16), width: "100%", maxWidth: CANVAS.safeWidth, position: "relative" }}>
           <CodeWindow>
             <div style={{ fontFamily: FONTS.mono, fontSize: FONT, fontWeight: 700, lineHeight: LH, whiteSpace: "pre" }}>
+              
+              {/* "function " (length: 9) */}
               <span style={{ opacity: kwOp }}>
-                <T c={COLORS.keyword}>{"function "}</T>
-                <T c={COLORS.fnName}>{"throttle"}</T>
+                {line1.length >= 9 && <T c={COLORS.keyword}>{"function "}</T>}
+                {line1.length > 0 && line1.length < 9 && <T c={COLORS.keyword}>{line1.slice(0, 9)}</T>}
+                
+                {/* "throttle" (length: 8, cumulative: 17) */}
+                {line1.length >= 17 && <T c={COLORS.fnName}>{"throttle"}</T>}
+                {line1.length > 9 && line1.length < 17 && <T c={COLORS.fnName}>{line1.slice(9, 17)}</T>}
               </span>
+              
+              {/* "(" (length: 1, cumulative: 18) */}
               <span style={{ opacity: puncOp }}>
-                <T c={COLORS.punctuation}>{"("}</T>
+                {line1.length >= 18 && <T c={COLORS.punctuation}>{"("}</T>}
+                {line1.length > 17 && line1.length < 18 && <T c={COLORS.punctuation}>{line1.slice(17, 18)}</T>}
               </span>
-              {line1.length >= 29 && (
-                <span style={{ opacity: cbOp }}>
-                  <T c={COLORS.value}>{"callback"}</T>
-                </span>
-              )}
-              {line1.length < 29 && line1.length > 10 && (
-                <span style={{ opacity: cbOp }}>
-                  <T c={COLORS.value}>{line1.slice(10)}</T>
-                </span>
-              )}
-              {line1.length >= 28 && (
-                <span style={{ opacity: puncOp }}>
-                  <T c={COLORS.punctuation}>{", "}</T>
-                </span>
-              )}
-              {line1.length >= 34 && (
-                <span style={{ opacity: dlOp }}>
-                  <T c={COLORS.value}>{"delay"}</T>
-                </span>
-              )}
-              {line1.length >= 29 && line1.length < 34 && (
-                <span style={{ opacity: dlOp }}>
-                  <T c={COLORS.value}>{line1.slice(28)}</T>
-                </span>
-              )}
-              {line1.length >= 36 && (
-                <span style={{ opacity: braceOp }}>
-                  <T c={COLORS.punctuation}>{")"}</T>
-                </span>
-              )}
-              {line1.length >= 34 && line1.length < 37 && (
-                <span style={{ opacity: braceOp }}>
-                  <T c={COLORS.punctuation}>{line1.slice(34)}</T>
-                </span>
-              )}
+              
+              {/* "callback" (length: 8, cumulative: 26) */}
+              <span style={{ opacity: cbOp }}>
+                {line1.length >= 26 && <T c={COLORS.value}>{"callback"}</T>}
+                {line1.length > 18 && line1.length < 26 && <T c={COLORS.value}>{line1.slice(18, 26)}</T>}
+              </span>
+              
+              {/* ", " (length: 2, cumulative: 28) */}
+              <span style={{ opacity: puncOp }}>
+                {line1.length >= 28 && <T c={COLORS.punctuation}>{", "}</T>}
+                {line1.length > 26 && line1.length < 28 && <T c={COLORS.punctuation}>{line1.slice(26, 28)}</T>}
+              </span>
+              
+              {/* "delay" (length: 5, cumulative: 33) */}
+              <span style={{ opacity: dlOp }}>
+                {line1.length >= 33 && <T c={COLORS.value}>{"delay"}</T>}
+                {line1.length > 28 && line1.length < 33 && <T c={COLORS.value}>{line1.slice(28, 33)}</T>}
+              </span>
+              
+              {/* ") {" (length: 3, cumulative: 36) */}
+              <span style={{ opacity: braceOp }}>
+                {line1.length >= 36 && <T c={COLORS.punctuation}>{") {"}</T>}
+                {line1.length > 33 && line1.length < 36 && <T c={COLORS.punctuation}>{line1.slice(33, 36)}</T>}
+              </span>
+
               {!line1Done && (
                 <span style={{
                   display: "inline-block", width: 3, height: "0.82em",
@@ -238,7 +237,7 @@ export const Scene4: React.FC = () => {
           {/* Arrow 2: delay (Tail at box bottom, Head at code) */}
           {dlLineP > 0 && (
             <path
-              d="M 520 1250 C 520 1150, 780 1200, 740 985"
+              d="M 520 1250 C 520 1150, 780 1200, 790 985"
               fill="none"
               stroke={COLORS.accentB}
               strokeWidth="4"

@@ -61,7 +61,8 @@ export const ROW_STYLES = [
 
 const CodeWindow: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div style={{
-    width: 920, borderRadius: 18, background: COLORS.codeBg,
+    position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+    width: 1000, borderRadius: 18, background: COLORS.codeBg,
     border: "1.5px solid rgba(255,255,255,0.09)", overflow: "hidden",
     boxShadow: "0 28px 72px rgba(0,0,0,0.75)",
   }}>
