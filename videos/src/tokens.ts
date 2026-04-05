@@ -61,7 +61,7 @@ export const DURATIONS = {
   s1:  Math.round(7.5 * 30),  // 135f — spread clone setup
   s2:  Math.round(5.5 * 30),  // 135f — mutation bug reveal
   s3:  Math.round(4.0 * 30),  // 120f — shallow copy diagram
-  s4:  Math.round(4.5 * 30),  // 135f — JSON hack appears
+  s4:  Math.round(5.3 * 30),  // 135f — JSON hack appears
   s5:  Math.round(4.0 * 30),  // 120f — JSON problems: dates, undefined
   s6:  Math.round(3.5 * 30),  // 105f — structuredClone reveal
   s7:  Math.round(4.5 * 30),  // 135f — true deep clone proof

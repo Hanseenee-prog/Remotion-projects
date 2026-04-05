@@ -1,154 +1,174 @@
 import React from "react";
-import { AbsoluteFill, useCurrentFrame, interpolate, spring, useVideoConfig } from "remotion";
-import { COLORS, FONTS, SAFE } from "./tokens";
+import { AbsoluteFill, useCurrentFrame, interpolate } from "remotion";
+import { COLORS, FONTS } from "./tokens";
 
 const C = COLORS;
-const display = FONTS.display;
-const mono = FONTS.mono;
+
+function clamp01(v: number) { return Math.min(1, Math.max(0, v)); }
+function easeOut(t: number) { return 1 - Math.pow(1 - t, 3); }
+function prog(frame: number, start: number, end: number) {
+  return clamp01((frame - start) / (end - start));
+}
+
+function tok(color: string, text: string) {
+  return (
+    <span style={{ color, fontFamily: FONTS.mono, whiteSpace: "pre" }}>
+      {text}
+    </span>
+  );
+}
+
+const FONT = 38;
+const LH = 1.7;
+const DIM = 0.2;
+
+const CodeWindow: React.FC<{
+  tabLabel: string;
+  tabColor: string;
+  fileName: string;
+  children: React.ReactNode;
+}> = ({ tabLabel, tabColor, fileName, children }) => (
+  <div style={{
+    width: 1000,
+    borderRadius: 18,
+    background: COLORS.codeBg,
+    border: "1.5px solid rgba(255,255,255,0.12)",
+    overflow: "hidden",
+    boxShadow: "0 28px 72px rgba(0,0,0,0.8)",
+  }}>
+    <div style={{
+      display: "flex", alignItems: "center",
+      background: "#0D1117",
+      borderBottom: "1px solid rgba(255,255,255,0.06)",
+      paddingLeft: 24, height: 72,
+    }}>
+      <div style={{ display: "flex", gap: 10, marginRight: 28 }}>
+        {["#FF5F57", "#FEBC2E", "#28C840"].map((c) => (
+          <div key={c} style={{ width: 18, height: 18, borderRadius: "50%", background: c }} />
+        ))}
+      </div>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10,
+        background: COLORS.codeBg,
+        borderRadius: "8px 8px 0 0",
+        padding: "10px 24px 10px 16px",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderBottom: "none",
+        marginBottom: -1,
+      }}>
+        <div style={{
+          background: tabColor, borderRadius: 5, padding: "2px 8px",
+          fontFamily: FONTS.mono, fontSize: 20, fontWeight: 800,
+          color: "#fff", letterSpacing: "0.04em",
+          textTransform: "uppercase" as const,
+        }}>
+          {tabLabel}
+        </div>
+        <span style={{
+          fontFamily: FONTS.mono, fontSize: 26,
+          fontWeight: 600, color: COLORS.offWhite,
+        }}>
+          {fileName}
+        </span>
+      </div>
+    </div>
+    <div style={{ padding: "40px 48px 48px" }}>{children}</div>
+  </div>
+);
 
 export const Scene3: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
 
-  const titleOp = interpolate(frame, [0, 18], [0, 1], { extrapolateRight: "clamp" });
-  const titleY = interpolate(frame, [0, 18], [30, 0], { extrapolateRight: "clamp" });
+  // ─── TIMING (Balanced for 120f) ───────────────────────────────
+  const winInP = easeOut(prog(frame, 0, 12));
+  const winY = (1 - winInP) * 200;
+  const winOp = clamp01(prog(frame, 0, 8));
 
-  // Box entrance springs
-  const box1Scale = spring({ frame, fps, from: 0, to: 1, config: { damping: 14, stiffness: 180 }, delay: 15 });
-  const box2Scale = spring({ frame, fps, from: 0, to: 1, config: { damping: 14, stiffness: 180 }, delay: 35 });
+  // Dimming happens as typing starts
+  const dimP = easeOut(prog(frame, 45, 55));
+  const topBlockOpacity = interpolate(dimP, [0, 1], [1, DIM]);
 
-  // Arrow draw — SVG strokeDashoffset
-  const arrowProgress = interpolate(frame, [55, 80], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const typeStart = 48;
+  const typeEnd = 90;
+  
+  // Script with manual indentation (\u00A0 is a non-breaking space)
+  const fullScript = [
+    `const clone = JSON.parse(`,
+    `\u00A0\u00A0JSON.stringify(original)`,
+    `);`
+  ];
+  
+  const totalLength = fullScript.join("\n").length;
+  const charsVisible = Math.floor(interpolate(frame, [typeStart, typeEnd], [0, totalLength], { extrapolateRight: "clamp" }));
+  const cursorBlink = Math.floor(frame / 6) % 2 === 0;
 
-  // Shared object box
-  const sharedScale = spring({ frame, fps, from: 0, to: 1, config: { damping: 14, stiffness: 180 }, delay: 75 });
+  const renderTypedLine = (lineIdx: number) => {
+    const text = fullScript[lineIdx];
+    const prevLinesLength = fullScript.slice(0, lineIdx).join("\n").length + (lineIdx > 0 ? 1 : 0);
+    const visibleInThisLine = Math.max(0, Math.min(text.length, charsVisible - prevLinesLength));
+    
+    if (visibleInThisLine <= 0 && charsVisible < prevLinesLength) return null;
 
-  // Warning label
-  const warnOp = interpolate(frame, [90, 110], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-
-  const arrowLen = 160; // approximate path length
-
-  const boxStyle = (color: string): React.CSSProperties => ({
-    border: `2px solid ${color}`,
-    background: `${color}11`,
-    borderRadius: 16,
-    padding: "24px 32px",
-    fontFamily: mono,
-    fontSize: 28,
-    color: C.codeText,
-    lineHeight: 1.6,
-    minWidth: 360,
-  });
-
-  const labelStyle: React.CSSProperties = {
-    fontFamily: display,
-    fontSize: 22,
-    color: C.muted,
-    marginBottom: 8,
-    letterSpacing: 0.5,
+    const visibleText = text.slice(0, visibleInThisLine);
+    
+    return (
+      <div key={lineIdx} style={{ height: FONT * LH, whiteSpace: "pre" }}>
+        {visibleText.split(/(\.|\(|\)|const |JSON|parse|stringify|original)/).map((part, i) => {
+          let color = C.codeText;
+          if (part === "const ") color = C.keyword;
+          if (part === "JSON") color = C.property;
+          if (part === "parse" || part === "stringify") color = C.fnName;
+          if (["(", ")", ".", ";"].includes(part)) color = C.punctuation;
+          return <span key={i} style={{ color, fontFamily: FONTS.mono }}>{part}</span>;
+        })}
+        {/* Typing cursor */}
+        {charsVisible >= prevLinesLength && charsVisible < prevLinesLength + text.length && cursorBlink && (
+           <span style={{ display: "inline-block", width: 3, height: "0.8em", background: C.accentA, marginLeft: 2, verticalAlign: "middle" }} />
+        )}
+      </div>
+    );
   };
 
   return (
-    <AbsoluteFill style={{ padding: `${SAFE.top}px ${SAFE.left}px` }}>
-
-      {/* Title */}
-      <div style={{ opacity: titleOp, transform: `translateY(${titleY}px)`, marginBottom: 60 }}>
-        <div style={{ fontFamily: display, fontSize: 60, fontWeight: 800, color: C.white, lineHeight: 1.1 }}>
-          Spread only makes a<br />
-          <span style={{ color: C.accentB }}>shallow copy.</span>
-        </div>
-      </div>
-
-      {/* Diagram area */}
-      <div style={{ position: "relative", width: "100%" }}>
-
-        {/* original box */}
-        <div style={{ transform: `scale(${box1Scale})`, transformOrigin: "left center", marginBottom: 20 }}>
-          <div style={labelStyle}>original</div>
-          <div style={boxStyle(C.accentA)}>
-            <div><span style={{ color: C.property }}>name</span>: <span style={{ color: C.string }}>"Alice"</span></div>
-            <div><span style={{ color: C.property }}>address</span>: <span style={{ color: C.accentC }}>→ ref</span></div>
-          </div>
-        </div>
-
-        {/* clone box */}
-        <div style={{ transform: `scale(${box2Scale})`, transformOrigin: "left center", marginBottom: 40 }}>
-          <div style={labelStyle}>clone (spread)</div>
-          <div style={boxStyle(C.accentB)}>
-            <div><span style={{ color: C.property }}>name</span>: <span style={{ color: C.string }}>"Alice"</span> <span style={{ color: C.comment, fontSize: 22 }}>✓ copied</span></div>
-            <div><span style={{ color: C.property }}>address</span>: <span style={{ color: C.accentC }}>→ ref</span></div>
-          </div>
-        </div>
-
-        {/* Both arrows pointing right to shared object — drawn as SVG */}
-        <svg
-          style={{ position: "absolute", top: 60, left: 420, overflow: "visible" }}
-          width={260} height={180}
-        >
-          {/* Arrow from original */}
-          <path
-            d="M 0,40 C 80,40 80,120 160,120"
-            stroke={C.accentC}
-            strokeWidth={3}
-            fill="none"
-            strokeDasharray={280}
-            strokeDashoffset={280 * (1 - arrowProgress)}
-            strokeLinecap="round"
-          />
-          {/* Arrow from clone */}
-          <path
-            d="M 0,140 C 80,140 80,120 160,120"
-            stroke={C.accentC}
-            strokeWidth={3}
-            fill="none"
-            strokeDasharray={280}
-            strokeDashoffset={280 * (1 - arrowProgress)}
-            strokeLinecap="round"
-          />
-          {/* Arrowhead */}
-          {arrowProgress > 0.85 && (
-            <polygon
-              points="160,113 148,107 148,133"
-              fill={C.accentC}
-              opacity={interpolate(arrowProgress, [0.85, 1], [0, 1])}
-            />
-          )}
-        </svg>
-
-        {/* Shared nested object */}
+    <AbsoluteFill>
+      <div style={{
+        position: "absolute", inset: 0,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
         <div style={{
-          transform: `scale(${sharedScale})`,
-          transformOrigin: "right center",
-          position: "absolute",
-          right: 0,
-          top: 50,
+          opacity: winOp,
+          transform: `translateY(${winY}px)`,
         }}>
-          <div style={{ ...labelStyle, color: C.accentC }}>{ } address (shared!)</div>
-          <div style={{
-            ...boxStyle(C.accentC),
-            background: "rgba(255,123,114,0.1)",
-            minWidth: 280,
-          }}>
-            <div><span style={{ color: C.property }}>city</span>: <span style={{ color: C.string }}>"Lagos"</span></div>
-          </div>
-        </div>
+          <CodeWindow tabLabel="js" tabColor="#C9A227" fileName="deepClone.js">
+            
+            {/* ════ OBJECT BLOCK (John) ════ */}
+            <div style={{
+              opacity: topBlockOpacity,
+              fontFamily: FONTS.mono, fontSize: FONT,
+              fontWeight: 700, lineHeight: LH, whiteSpace: "pre",
+            }}>
+              <div>{tok(C.keyword, "const ")}{tok(C.codeText, "original")}{tok(C.punctuation, " = {")}</div>
+              <div>{"  "}{tok(C.property, "name")}{tok(C.punctuation, ": ")}{tok(C.string, '"John"')}{tok(C.punctuation, ",")}</div>
+              <div>{"  "}{tok(C.property, "joined")}{tok(C.punctuation, ": ")}{tok(C.keyword, "new ")}{tok(C.fnName, "Date")}{tok(C.punctuation, "(),")}</div>
+              <div>{"  "}{tok(C.property, "stats")}{tok(C.punctuation, ": ")}{tok(C.value, "undefined")}{tok(C.punctuation, ",")}</div>
+              <div>{"  "}{tok(C.property, "favorites")}{tok(C.punctuation, ": ")}{tok(C.keyword, "new ")}{tok(C.fnName, "Set")}{tok(C.punctuation, "([")}{tok(C.number, "1")}{tok(C.punctuation, ", ")}{tok(C.number, "2")}{tok(C.punctuation, "])")}</div>
+              <div>{tok(C.punctuation, "};")}</div>
+            </div>
 
-        {/* Warning note */}
-        <div style={{
-          opacity: warnOp,
-          marginTop: 220,
-          display: "flex",
-          alignItems: "center",
-          gap: 14,
-          background: "rgba(255,123,114,0.08)",
-          border: "1px solid rgba(255,123,114,0.25)",
-          borderRadius: 12,
-          padding: "18px 24px",
-        }}>
-          <span style={{ fontSize: 32 }}>⚠️</span>
-          <span style={{ fontFamily: display, fontSize: 30, color: C.accentC, fontWeight: 600 }}>
-            Both point to the same nested object
-          </span>
+            <div style={{ height: 20 }}></div>
+
+            {/* ════ TYPING BLOCK (3-line clone) ════ */}
+            <div style={{
+              marginTop: 25,
+              fontFamily: FONTS.mono, fontSize: FONT,
+              fontWeight: 700, lineHeight: LH,
+            }}>
+              {renderTypedLine(0)}
+              {renderTypedLine(1)}
+              {renderTypedLine(2)}
+            </div>
+            
+          </CodeWindow>
         </div>
       </div>
     </AbsoluteFill>
