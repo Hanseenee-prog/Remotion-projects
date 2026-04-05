@@ -139,7 +139,7 @@ export const Scene3: React.FC = () => {
           opacity: winOp,
           transform: `translateY(${winY}px)`,
         }}>
-          <CodeWindow tabLabel="js" tabColor="#C9A227" fileName="deepClone.js">
+          <CodeWindow tabLabel="js" tabColor="#C9A227" fileName="clone.js">
             
             {/* ════ OBJECT BLOCK (John) ════ */}
             <div style={{
