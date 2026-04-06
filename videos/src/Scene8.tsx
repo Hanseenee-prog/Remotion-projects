@@ -1,155 +1,184 @@
-import React from "react";
-import { AbsoluteFill, useCurrentFrame, interpolate, spring, useVideoConfig } from "remotion";
-import { COLORS, FONTS, SAFE } from "./tokens";
+// Scene 8 — "Follow for more tips like this."
+// 90 Frames (3s) @ 30fps
+//
+// Sequence:
+//   0–20  : Profile Card springs in (scale 0.7→1, opacity 0→1).
+//   20–40 : Cursor flies to Follow button.
+//   40    : Click — button turns grey, ripple, cursor scale squish.
+//   40–48 : Cursor fades out after click.
+//   40–90 : Hold on "Following ✓" state.
 
-const C = COLORS;
-const display = FONTS.display;
-const mono = FONTS.mono;
+import React from "react";
+import {
+  AbsoluteFill,
+  useCurrentFrame,
+  useVideoConfig,
+  interpolate,
+  interpolateColors,
+  spring,
+  staticFile,
+  Img,
+} from "remotion";
+import { COLORS, FONTS } from "./tokens";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
+
+// ─── ProfileCard — verbatim from Scene9, styles untouched ────────────────────
+const CARD_W = 680;
+const CARD_H = 730;
+const AVATAR_R = 110;
+
+const ProfileCard: React.FC<{
+  cardScale: number;
+  cardOpacity: number;
+  isClicked: boolean;
+  colorSpring: number;
+  cursorX: number;
+  cursorY: number;
+  cursorClickScale: number;
+  rippleScale: number;
+  rippleOpacity: number;
+  showCursor: boolean;
+}> = ({
+  cardScale, cardOpacity, isClicked, colorSpring,
+  cursorX, cursorY, cursorClickScale, rippleScale, rippleOpacity, showCursor,
+}) => {
+  const btnBg = interpolateColors(colorSpring, [0, 1], ["#0095F6", "#2A2A2A"]);
+  const btnTextC = interpolateColors(colorSpring, [0, 1], ["#FFFFFF", "#AAAAAA"]);
+  const btnText = isClicked ? "Following ✓" : "Follow";
+  const glowOp = interpolate(colorSpring, [0, 1], [0, 0.18]);
+
+  return (
+    <div style={{
+      width: CARD_W, height: CARD_H,
+      opacity: cardOpacity,
+      transform: `scale(${cardScale})`,
+      transformOrigin: "center center",
+      zIndex: 50,
+    }}>
+      <div style={{
+        position: "relative", width: "100%", height: "100%",
+        background: "#121212", borderRadius: 40,
+        border: "1.5px solid rgba(255,255,255,0.08)",
+        boxShadow: `0 40px 120px rgba(0,0,0,0.95), 0 0 60px rgba(0,149,246,${glowOp})`,
+        display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 60, overflow: "hidden",
+      }}>
+        <div style={{ position: "relative", marginBottom: 28 }}>
+          <div style={{
+            width: (AVATAR_R + 14) * 2, height: (AVATAR_R + 14) * 2, borderRadius: "50%",
+            background: "linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)",
+            padding: 5, display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <div style={{
+              width: (AVATAR_R + 7) * 2, height: (AVATAR_R + 7) * 2, borderRadius: "50%",
+              background: "#121212", padding: 5, display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <div style={{
+                width: AVATAR_R * 2, height: AVATAR_R * 2, borderRadius: "50%",
+                overflow: "hidden", background: "#333",
+              }}>
+                <Img
+                  src={staticFile("profile-img.jpg")}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 38%" }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ fontFamily: FONTS.mono, fontSize: 46, fontWeight: 800, color: "#FFFFFF", marginBottom: 10 }}>
+          Hanson Emmanuel
+        </div>
+        <div style={{ fontFamily: FONTS.mono, fontSize: 34, fontWeight: 500, color: "rgba(255,255,255,0.55)", marginBottom: 80 }}>
+          @hee_codes
+        </div>
+
+        <div style={{ position: "relative" }}>
+          <div style={{
+            backgroundColor: btnBg, color: btnTextC, width: 400, height: 110,
+            borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 40, fontWeight: 700, fontFamily: FONTS.mono,
+            boxShadow: isClicked ? "0 4px 20px rgba(0,0,0,0.5)" : "0 12px 40px rgba(0,149,246,0.5)",
+            position: "relative", overflow: "hidden",
+            border: isClicked ? "2px solid rgba(255,255,255,0.08)" : "none",
+          }}>
+            {isClicked && (
+              <div style={{
+                position: "absolute", width: 120, height: 120, background: "rgba(255,255,255,0.7)",
+                borderRadius: "50%", transform: `scale(${rippleScale})`, opacity: rippleOpacity,
+              }} />
+            )}
+            <span style={{ zIndex: 1 }}>{btnText}</span>
+          </div>
+
+          {showCursor && (
+            <div style={{
+              position: "absolute", left: "50%", top: "50%",
+              transform: `translate(${cursorX}px, ${cursorY}px) scale(${cursorClickScale})`,
+              zIndex: 20, fontSize: 90, filter: "drop-shadow(0px 12px 12px rgba(0,0,0,0.5))", rotate: "-10deg",
+            }}>
+              👆
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Scene Component ──────────────────────────────────────────────────────────
 
 export const Scene8: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // bg accent circle
-  const circleScale = spring({ frame, fps, from: 0, to: 1, config: { damping: 20, stiffness: 80 }, delay: 0 });
+  // Timing constants — compressed to fit 90f, no teaser
+  const CARD_START  = 0;
+  const CURSOR_IN   = 20;
+  const CLICK_AT    = 40;
 
-  const line1Op = interpolate(frame, [10, 26], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const line1Y = interpolate(frame, [10, 26], [40, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  // ── Card Animation ────────────────────────────────────────────────────────
+  const cardInSpring = spring({
+    fps, frame: frame - CARD_START,
+    config: { damping: 14, stiffness: 130, mass: 0.9 },
+  });
+  const cardScale = interpolate(clamp(cardInSpring), [0, 1], [0.7, 1]);
+  const cardOpacity = interpolate(frame, [CARD_START, CARD_START + 10], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
-  const line2Op = interpolate(frame, [28, 44], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const line2Y = interpolate(frame, [28, 44], [30, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  // ── Cursor Movement ───────────────────────────────────────────────────────
+  const cursorMoveSpring = spring({
+    fps, frame: frame - CURSOR_IN,
+    config: { damping: 14, stiffness: 100 },
+  });
+  const cursorX = interpolate(clamp(cursorMoveSpring), [0, 1], [380, 0]);
+  const cursorY = interpolate(clamp(cursorMoveSpring), [0, 1], [600, 40]);
 
-  const dividerOp = interpolate(frame, [48, 60], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-
-  const pillScale = spring({ frame, fps, from: 0, to: 1, config: { damping: 10, stiffness: 200 }, delay: 60 });
-
-  const handleOp = interpolate(frame, [80, 96], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  const handleY = interpolate(frame, [80, 96], [20, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-
-  // Subtle pulse on pill
-  const pillGlow = interpolate(
-    (frame - 65) < 0 ? 0 : (frame - 65) % 50,
-    [0, 25, 50],
-    [0.3, 0.8, 0.3],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-  );
+  // ── Click Logic ───────────────────────────────────────────────────────────
+  const isClicked = frame >= CLICK_AT;
+  const colorSpring = clamp(isClicked ? spring({ fps, frame: frame - CLICK_AT, config: { damping: 20, stiffness: 120 } }) : 0);
+  const cursorPress = spring({ fps, frame: frame - CLICK_AT, config: { damping: 12, stiffness: 300, mass: 0.5 } });
+  const cursorClickScale = interpolate(cursorPress, [0, 0.5, 1], [1, 0.75, 1], { extrapolateRight: "clamp" });
+  const rippleSpring = spring({ fps, frame: frame - CLICK_AT, config: { damping: 20, stiffness: 60 } });
+  const rippleScale = clamp(rippleSpring) * 5;
+  const rippleOpacity = interpolate(clamp(rippleSpring), [0, 1], [0.6, 0]);
+  const cursorFade = interpolate(frame, [CLICK_AT, CLICK_AT + 8], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const showCursor = frame >= CURSOR_IN && cursorFade > 0;
 
   return (
-    <AbsoluteFill style={{ padding: `${SAFE.top}px ${SAFE.left}px`, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-
-      {/* Decorative bg circle */}
-      <div style={{
-        position: "absolute",
-        width: 600,
-        height: 600,
-        borderRadius: "50%",
-        background: "radial-gradient(circle, rgba(126,231,135,0.08) 0%, transparent 70%)",
-        transform: `scale(${circleScale})`,
-        top: "50%",
-        left: "50%",
-        marginLeft: -300,
-        marginTop: -300,
-        zIndex: 0,
-      }} />
-
-      <div style={{ position: "relative", zIndex: 1 }}>
-
-        {/* Main headline */}
-        <div style={{
-          opacity: line1Op,
-          transform: `translateY(${line1Y}px)`,
-          fontFamily: display,
-          fontSize: 72,
-          fontWeight: 900,
-          color: C.white,
-          lineHeight: 1.05,
-          marginBottom: 24,
-        }}>
-          Stop using
-        </div>
-
-        <div style={{
-          opacity: line1Op,
-          transform: `translateY(${line1Y}px)`,
-          fontFamily: display,
-          fontSize: 72,
-          fontWeight: 900,
-          color: C.accentC,
-          lineHeight: 1.05,
-          marginBottom: 32,
-        }}>
-          hacks.
-        </div>
-
-        {/* Sub */}
-        <div style={{
-          opacity: line2Op,
-          transform: `translateY(${line2Y}px)`,
-          fontFamily: display,
-          fontSize: 36,
-          color: C.muted,
-          fontWeight: 500,
-          lineHeight: 1.5,
-          marginBottom: 60,
-        }}>
-          Use what the browser<br />already gives you.
-        </div>
-
-        {/* Divider */}
-        <div style={{
-          opacity: dividerOp,
-          height: 1,
-          background: C.border,
-          marginBottom: 52,
-        }} />
-
-        {/* Follow pill */}
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <div style={{
-            transform: `scale(${pillScale})`,
-            position: "relative",
-          }}>
-            {/* Glow */}
-            <div style={{
-              position: "absolute",
-              inset: -12,
-              borderRadius: 100,
-              background: `rgba(126,231,135,${pillGlow * 0.15})`,
-              filter: "blur(16px)",
-            }} />
-            <div style={{
-              position: "relative",
-              display: "flex",
-              alignItems: "center",
-              gap: 14,
-              background: "rgba(126,231,135,0.12)",
-              border: "2px solid rgba(126,231,135,0.5)",
-              borderRadius: 100,
-              padding: "18px 36px",
-            }}>
-              <span style={{ fontSize: 32 }}>🫶</span>
-              <span style={{ fontFamily: display, fontSize: 36, fontWeight: 700, color: C.accentA }}>
-                Follow for more tips
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Handle */}
-        <div style={{
-          opacity: handleOp,
-          transform: `translateY(${handleY}px)`,
-          textAlign: "center",
-          marginTop: 36,
-          fontFamily: mono,
-          fontSize: 30,
-          color: C.subtle,
-          letterSpacing: 1,
-        }}>
-          @hee_codes
-        </div>
-
-      </div>
+    <AbsoluteFill style={{ background: "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <ProfileCard
+        cardScale={cardScale}
+        cardOpacity={cardOpacity}
+        isClicked={isClicked}
+        colorSpring={colorSpring}
+        cursorX={cursorX}
+        cursorY={cursorY}
+        cursorClickScale={cursorClickScale}
+        rippleScale={rippleScale}
+        rippleOpacity={rippleOpacity}
+        showCursor={showCursor}
+      />
     </AbsoluteFill>
   );
 };

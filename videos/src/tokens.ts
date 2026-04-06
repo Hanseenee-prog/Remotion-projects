@@ -63,9 +63,9 @@ export const DURATIONS = {
   s3:  Math.round(4.0 * 30),  // 120f — shallow copy diagram
   s4:  Math.round(5.3 * 30),  // 135f — JSON hack appears
   s5:  Math.round(4.0 * 30),  // 120f — JSON problems: dates, undefined
-  s6:  Math.round(3.5 * 30),  // 105f — structuredClone reveal
-  s7:  Math.round(4.5 * 30),  // 135f — true deep clone proof
-  s8:  Math.round(4.5 * 30),  // 135f — CTA
+  s6:  Math.round(7.3 * 30),  // 105f — structuredClone reveal
+  s7:  Math.round(3.5 * 30),  // 135f — true deep clone proof
+  s8:  Math.round(3.0 * 30),  // 135f — CTA
 } as const;
 
 export const TOTAL_FRAMES = Object.values(DURATIONS).reduce((s, d) => s + d, 0);

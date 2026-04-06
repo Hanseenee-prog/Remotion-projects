@@ -155,12 +155,12 @@ export const Scene2: React.FC = () => {
   //   Right box X = CW/2 + 240 = 540 + 240 = 780
   //   Bottom box X = CW/2 = 540
 
-  const LBX  = CW / 2 - 240;  // 300 — left box  centre-X
+  const LBX  = CW / 2 - 260;  // 300 — left box  centre-X
   const RBX  = CW / 2 + 240;  // 780 — right box centre-X
   const BBX  = CW / 2;        // 540 — bottom box centre-X
 
-  const ARROW_Y1 = 0.35 * CH + 79;   // ~751  — bottom of top boxes
-  const ARROW_Y2 = 0.68 * CH - 74;   // ~1232 — top edge of bottom box (before label)
+  const ARROW_Y1 = 0.35 * CH + 150;   // ~751  — bottom of top boxes
+  const ARROW_Y2 = 0.68 * CH - 100;   // ~1232 — top edge of bottom box (before label)
 
   const boxStyle = (color: string): React.CSSProperties => ({
     border: `2px solid ${color}`,
@@ -168,7 +168,7 @@ export const Scene2: React.FC = () => {
     borderRadius: 16,
     padding: "24px 32px",
     fontFamily: mono,
-    fontSize: 28,
+    fontSize: 38,
     color: C.codeText,
     lineHeight: 1.6,
     width: 380,
@@ -178,11 +178,12 @@ export const Scene2: React.FC = () => {
 
   const labelStyle: React.CSSProperties = {
     fontFamily: display,
-    fontSize: 28,
+    fontSize: 40,
     color: C.muted,
-    marginBottom: 6,
+    marginBottom: 16,
     letterSpacing: 0.5,
     textAlign: "center",
+    fontWeight: 700
   };
 
   return (
@@ -192,10 +193,10 @@ export const Scene2: React.FC = () => {
       <div style={{
         opacity: headerOp,
         transform: `translateY(${headerY}px)`,
-        width: "100%", textAlign: "center",
-        marginTop: 40, position: "absolute", zIndex: 10,
+        width: "95%", textAlign: "center",
+        marginTop: 140, position: "absolute", zIndex: 10,
       }}>
-        <div style={{ fontFamily: display, fontSize: 64, fontWeight: 800, color: C.white, textTransform: "uppercase", letterSpacing: 2 }}>
+        <div style={{ fontFamily: display, fontSize: 64, fontWeight: 800, color: C.white, textTransform: "Capitalize", letterSpacing: 2 }}>
           Shallow Copy
         </div>
         <div style={{ opacity: subTextOp, transform: `translateY(${subTextY}px)`, marginTop: 16 }}>
@@ -229,7 +230,7 @@ export const Scene2: React.FC = () => {
               position: "absolute", bottom: -100, left: "50%",
               transform: "translateX(-50%)",
               opacity: seq1LabelOp,
-              fontFamily: mono, fontSize: 40, color: C.muted,
+              fontFamily: display, fontSize: 40, color: C.muted,
               textAlign: "center", fontWeight: 700, whiteSpace: "nowrap",
             }}>
               original
@@ -247,7 +248,7 @@ export const Scene2: React.FC = () => {
               position: "absolute", bottom: -100, left: "50%",
               transform: "translateX(-50%)",
               opacity: seq1LabelOp,
-              fontFamily: mono, fontSize: 40, color: C.muted,
+              fontFamily: display, fontSize: 40, color: C.muted,
               textAlign: "center", fontWeight: 700, whiteSpace: "nowrap",
             }}>
               clone
@@ -310,14 +311,14 @@ export const Scene2: React.FC = () => {
             position: "absolute", top: "68%", left: "50%",
             transform: `translate(-50%, -50%) scale(${bottomBoxScale})`,
           }}>
-            <div style={{ ...labelStyle, color: C.accentC }}>address (shared object)</div>
             <div style={{ ...boxStyle(C.accentC), width: 420 }}>
               <div>
                 <span style={{ color: C.property }}>city</span>:{" "}
                 <span style={{ color: C.string }}>"Houston"</span>
-                <span style={{ fontSize: 24, float: "right" }}>⚠️</span>
+                {/* <span style={{ fontSize: 24, float: "right" }}>⚠️</span> */}
               </div>
             </div>
+            <div style={{ ...labelStyle, color: C.accentC, fontWeight: 500, }}>address (shared object)</div>
           </div>
 
           {/* ── ARROWS: full-canvas SVG overlay ─────────────────────────────────

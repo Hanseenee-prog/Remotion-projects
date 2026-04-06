@@ -151,14 +151,14 @@ export const Scene1: React.FC = () => {
   const cursorBlink = Math.floor(frame / 6) % 2 === 0;
 
   const mutTokens: Array<{ text: string; color: string }> = [
-    { text: "clone",     color: C.codeText   },
-    { text: ".",         color: C.punctuation },
-    { text: "address",   color: C.property   },
-    { text: ".",         color: C.punctuation },
-    { text: "city",      color: C.property   },
-    { text: " = ",       color: C.punctuation },
-    { text: '"Houston"', color: C.string     },
-    { text: ';', color: C.punctuation     },
+    { text: "clone",      color: C.codeText   },
+    { text: ".",          color: C.punctuation },
+    { text: "address",    color: C.property   },
+    { text: ".",          color: C.punctuation },
+    { text: "city",       color: C.property   },
+    { text: " = ",        color: C.punctuation },
+    { text: '"Houston"',  color: C.string     },
+    { text: ";",          color: C.punctuation },
   ];
 
   return (
@@ -174,23 +174,44 @@ export const Scene1: React.FC = () => {
           position: "absolute",
           opacity: labelOp,
           transform: `translateY(${labelY}px)`,
+          // Full-width so text-align center works across both lines
+          width: "100%",
           textAlign: "center",
         }}>
+          {/* Line 1: "The spread operator" */}
           <div style={{
             fontFamily: FONTS.display,
-            fontSize: 72, fontWeight: 800,
-            color: C.white, lineHeight: 1.15,
+            fontSize: 72,
+            fontWeight: 800,
+            color: C.white,
+            lineHeight: 1.2,
           }}>
             The{" "}
-            <span style={{
-              color: C.accentA,
-              marginBottom: 30
-            }}>
+            <span style={{ color: C.accentA }}>
               spread operator
             </span>
-            <div style={{ margin: "auto", width: "20%", display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <span style={{ marginTop: "10px", color: C.accentC, letterSpacing: 2, background: `${C.accentC}1A`, borderRadius: 10, width: "100%" }}>...</span>
-            </div>
+          </div>
+
+          {/* Line 2: "..." — centered under the line above */}
+          <div style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            marginTop: 12,
+          }}>
+            <span style={{
+              fontFamily: FONTS.display,
+              fontSize: 72,
+              fontWeight: 800,
+              color: C.accentC,
+              letterSpacing: 8,
+              background: `${C.accentC}1A`,
+              borderRadius: 14,
+              padding: "2px 36px",
+              lineHeight: 1.2,
+            }}>
+              ...
+            </span>
           </div>
         </div>
 
@@ -318,8 +339,7 @@ export const Scene1: React.FC = () => {
                 {tok(C.property,    "address")}
                 {tok(C.punctuation, ".")}
                 {tok(C.property,    "city")}
-                {tok(C.punctuation, ")")}
-                {tok(C.punctuation, ";")}
+                {tok(C.punctuation, ");")}
               </div>
               <div>
                 {tok(C.fnName,      "console")}
@@ -331,8 +351,7 @@ export const Scene1: React.FC = () => {
                 {tok(C.property,    "address")}
                 {tok(C.punctuation, ".")}
                 {tok(C.property,    "city")}
-                {tok(C.punctuation, ")")}
-                {tok(C.punctuation, ";")}
+                {tok(C.punctuation, ");")}
               </div>
             </div>
 
@@ -358,7 +377,6 @@ export const Scene1: React.FC = () => {
               }}>
                 <span style={{ color: C.comment, fontSize: 38 }}>original →</span>
                 <span style={{ color: C.accentC }}>"Houston"</span>
-                {/* <span style={{ fontSize: 34, marginLeft: 8 }}>😱</span> */}
               </div>
 
               {/* clone → "Houston" ✅ */}
@@ -366,14 +384,11 @@ export const Scene1: React.FC = () => {
                 opacity: res2Op,
                 transform: `scale(${bugScale})`,
                 display: "flex", alignItems: "center", gap: 18,
-                // background: `rgba(255,123,114,${bugPulse * 0.12})`,
-                // borderLeft: `4px solid rgba(255,123,114,${bugPulse})`,
                 padding: "6px 16px", marginLeft: -16,
                 borderRadius: 8,
               }}>
-                <span style={{ color: C.comment, fontSize: 38 }}>clone →</span>
+                <span style={{ color: C.comment, fontSize: 38 }}>clone{"\u00A0\u00A0\u00A0\u00A0"}→</span>
                 <span style={{ color: C.accentA }}>"Houston"</span>
-                {/* <span style={{ fontSize: 34, marginLeft: 8 }}>✅</span> */}
               </div>
             </div>
 
