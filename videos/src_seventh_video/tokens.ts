@@ -56,18 +56,16 @@ export const FONTS = {
   mono:    "'JetBrains Mono', monospace",
 } as const;
 
-// ─── Scene durations (frames @ 30 fps) ────────────────────────────────────────
+// ─── Scene durations (frames @ 30 fps) ───────────────────────────────────────
 export const DURATIONS = {
-  s1:  Math.round(4.0 * 30),  // 120f — click search → request fires
-  s2:  Math.round(5.0 * 30),  // 150f — click again → two requests running
-  s3:  Math.round(5.0 * 30),  // 150f — first response overwrites → race condition
-  s4:  Math.round(4.0 * 30),  // 120f — flickering / outdated results
-  s5:  Math.round(5.0 * 30),  // 150f — introduce AbortController, create controller
-  s6:  Math.round(6.0 * 30),  // 180f — check existing controller → abort previous
-  s7:  Math.round(5.0 * 30),  // 150f — new controller + attach signal
-  s8:  Math.round(6.0 * 30),  // 180f — every new request cancels the last one
-  s9:  Math.round(4.0 * 30),  // 120f — "if your app has search… you need this"
-  s10: Math.round(4.0 * 30),  // 120f — CTA / follow
+  s1:  Math.round(7.5 * 30),  // 135f — spread clone setup
+  s2:  Math.round(5.5 * 30),  // 135f — mutation bug reveal
+  s3:  Math.round(4.0 * 30),  // 120f — shallow copy diagram
+  s4:  Math.round(5.3 * 30),  // 135f — JSON hack appears
+  s5:  Math.round(4.0 * 30),  // 120f — JSON problems: dates, undefined
+  s6:  Math.round(7.3 * 30),  // 105f — structuredClone reveal
+  s7:  Math.round(3.5 * 30),  // 135f — true deep clone proof
+  s8:  Math.round(3.0 * 30),  // 135f — CTA
 } as const;
 
 export const TOTAL_FRAMES = Object.values(DURATIONS).reduce((s, d) => s + d, 0);
