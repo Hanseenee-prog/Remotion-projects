@@ -120,31 +120,47 @@ const Line: React.FC<{ op: number; children: React.ReactNode }> = ({ op, childre
   </div>
 );
 
-// ─── Gamepad SVG ─────────────────────────────────────────────────────────────
+// ─── Redesigned Wired Gamepad SVG ────────────────────────────────────────────
 const GamepadSVG: React.FC<{ size: number }> = ({ size }) => (
-  <svg width={size} height={size * 0.65} viewBox="0 0 200 130" fill="none">
-    {/* Body */}
-    <path d="M30 40 Q20 20 50 20 L150 20 Q180 20 170 40 L160 100 Q155 120 130 115 L110 105 Q100 100 90 105 L70 115 Q45 120 40 100 Z"
-      fill="#2a2d30" stroke="rgba(255,255,255,0.15)" strokeWidth="2" />
-    {/* D-pad vertical */}
-    <rect x="55" y="52" width="14" height="40" rx="4" fill="rgba(255,255,255,0.25)" />
-    {/* D-pad horizontal */}
-    <rect x="42" y="64" width="40" height="14" rx="4" fill="rgba(255,255,255,0.25)" />
-    {/* ABXY buttons */}
-    <circle cx="138" cy="58" r="8" fill="#ea4335" opacity={0.9} />   {/* B */}
-    <circle cx="155" cy="72" r="8" fill="#34a853" opacity={0.9} />   {/* A */}
-    <circle cx="122" cy="72" r="8" fill="#4285f4" opacity={0.9} />   {/* X */}
-    <circle cx="138" cy="86" r="8" fill="#fbbc04" opacity={0.9} />   {/* Y */}
-    {/* Center button */}
-    <circle cx="100" cy="68" r="10" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
-    <circle cx="100" cy="68" r="5" fill="rgba(255,255,255,0.2)" />
-    {/* Left stick */}
-    <circle cx="78" cy="90" r="10" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
-    {/* Right stick */}
-    <circle cx="122" cy="90" r="10" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
-    {/* Shoulder bumpers */}
-    <path d="M40 38 Q50 28 70 30 L70 40 Q55 38 40 48 Z" fill="rgba(255,255,255,0.1)" />
-    <path d="M160 38 Q150 28 130 30 L130 40 Q145 38 160 48 Z" fill="rgba(255,255,255,0.1)" />
+  <svg 
+    width={size} 
+    height={size * 0.65} 
+    viewBox="0 0 200 130" 
+    fill="none" 
+    style={{ overflow: "visible" }} // Allows the wire to stretch above the bounds
+  >
+    {/* Curved Wire extending upwards behind the text pill */}
+    <path 
+      d="M 100 15 C 100 -20, 130 -30, 100 -60" 
+      stroke="#1e2022" 
+      strokeWidth="6" 
+      fill="none" 
+      strokeLinecap="round" 
+    />
+    
+    {/* Wire Connector Top */}
+    <path d="M 90 30 V 12 A 10 10 0 0 1 110 12 V 30 Z" fill="#1e2022" />
+
+    {/* Main Controller Body (Peanut shape) */}
+    <path 
+      d="M 60 30 H 140 A 40 40 0 0 1 180 70 A 40 40 0 0 1 140 110 Q 100 95 60 110 A 40 40 0 0 1 20 70 A 40 40 0 0 1 60 30 Z" 
+      fill="#2a2d30" 
+      stroke="rgba(255,255,255,0.15)" 
+      strokeWidth="3" 
+    />
+
+    {/* D-Pad (Left Side) */}
+    <rect x="54" y="50" width="12" height="40" rx="2" fill="rgba(255,255,255,0.85)" />
+    <rect x="40" y="64" width="40" height="12" rx="2" fill="rgba(255,255,255,0.85)" />
+
+    {/* Center Pill Button */}
+    <rect x="88" y="55" width="24" height="10" rx="5" fill="#555" />
+
+    {/* Colored Action Buttons (Right Side) */}
+    <circle cx="140" cy="54" r="7" fill="#FEBC2E" /> {/* Top: Yellow */}
+    <circle cx="140" cy="86" r="7" fill="#28C840" /> {/* Bottom: Green */}
+    <circle cx="124" cy="70" r="7" fill="#4285f4" /> {/* Left: Blue */}
+    <circle cx="156" cy="70" r="7" fill="#FF5F57" /> {/* Right: Red */}
   </svg>
 );
 
@@ -213,98 +229,94 @@ export const Scene4: React.FC = () => {
   // PHASE A  0–40f  —  Title + gamepad spring in
   // ══════════════════════════════════════════════════════════════
   const titleInSpring = spring({ frame, fps, from: 0, to: 1, config: { damping: 14, stiffness: 160 } });
-  const titleInOp = interpolate(frame, [0, 12], [0, 1], { extrapolateRight: "clamp" });
-  const gamepadInSpring = spring({ frame: frame - 12, fps, from: 0, to: 1, config: { damping: 12, stiffness: 140 } });
-  const gamepadInOp = interpolate(frame, [12, 24], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const titleInOp = interpolate(frame, [0, 10], [0, 1], { extrapolateRight: "clamp" });
+  const gamepadInSpring = spring({ frame: frame - 6, fps, from: 0, to: 1, config: { damping: 12, stiffness: 140 } });
+  const gamepadInOp = interpolate(frame, [6, 12], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
 
   // Gamepad fades out as title moves up (frame 10–25)
-  const gamepadOutOp = interpolate(frame, [10, 25], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const gamepadOutOp = interpolate(frame, [40, 46], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const gamepadOp = gamepadInOp * gamepadOutOp;
 
   // ══════════════════════════════════════════════════════════════
   // PHASE B  10–50f  —  Title floats up to persistent header
   // ══════════════════════════════════════════════════════════════
-  const titleMoveP = easeInOut(prog(frame, 12, 48));
+  const titleMoveP = easeInOut(prog(frame, 40, 52));
   const TITLE_CENTER_Y = height / 2 - 140;
   const TITLE_HEADER_Y = 80;
   const titleY = lerp(TITLE_CENTER_Y, TITLE_HEADER_Y, titleMoveP);
-  const titleFontSize = lerp(88, 56, titleMoveP);
+  const titleFontSize = lerp(88, 40, titleMoveP);
   const headerOp = Math.min(titleInOp, 1);
 
   // ══════════════════════════════════════════════════════════════
   // PHASE C  50–85f  —  Code window slides in
   // ══════════════════════════════════════════════════════════════
-  const winInP = easeOut(prog(frame, 52, 82));
-  const winSlideY = lerp(120, 0, winInP);
+  const winInP = easeOut(prog(frame, 45, 57));
+  const winSlideY = lerp(120, -50, winInP);
   const winOp = clamp01(prog(frame, 52, 66));
 
   // Code window stays visible for entire rest of scene (no gun interlude)
   const codeWinOp = winOp;
 
   // ══════════════════════════════════════════════════════════════
-  // DIM LOGIC — named opacity per "logical line group"
+  // DIM LOGIC — continuous mapping to prevent flashing
   // ══════════════════════════════════════════════════════════════
-
-  // Dim ramp: 6 frames to snap to target, then hold
-  // Phase boundaries shifted 30f earlier vs original
 
   type Phase = "none" | "D" | "F" | "G" | "H" | "I" | "J";
 
   const phase: Phase =
-    frame <  85 ? "none" :
-    frame < 155 ? "D" :
-    frame < 225 ? "F" :
-    frame < 295 ? "G" :
-    frame < 360 ? "H" :
-    frame < 420 ? "I" :
+    frame <  75 ? "none" :
+    frame < 135 ? "D" :
+    frame < 200 ? "F" :
+    frame < 275 ? "G" :
+    frame < 340 ? "H" :
+    frame < 400 ? "I" :
     frame < 457 ? "J" :
     "none";
 
-  // Ramp 6 frames into each phase from FULL → target
+  // Map each phase to its previous phase to enable continuous transitions
+  const prevPhases: Record<Phase, Phase> = {
+    none: "none",
+    D: "none",
+    F: "D",
+    G: "F",
+    H: "G",
+    I: "H",
+    J: "I"
+  };
+
   function lineOp(line: "L1" | "L2" | "L3" | "L4" | "L5" | "L6" | "L7" | "L8" | "L9" | "L10" | "L11" | "L12" | "L13" | "L14" | "L15" | "L16") {
-
-    // Map phase → which lines are BRIGHT (everything else = DIM)
-    // L1  = let controller;
-    // L2  = function handleSearch(query) {
-    // L3  = (blank line)
-    // L4  = // Cancel previous request
-    // L5  = if (controller) {
-    // L6  =   controller.abort();
-    // L7  = }
-    // L8  = (blank line)
-    // L9  = // New controller for new request
-    // L10 = controller = new AbortController();
-    // L11 = (blank line)
-    // L12 = // New request
-    // L13 = fetch(`/api/search?q=${query}`, {
-    // L14 =   signal: controller.signal
-    // L15 = })
-    // L16 =   .then chain lines (treated as one group)
-
     const brightSets: Record<Phase, Set<typeof line>> = {
       none: new Set(["L1","L2","L3","L4","L5","L6","L7","L8","L9","L10","L11","L12","L13","L14","L15","L16"]),
-      D: new Set(["L9","L10"]),
-      F: new Set(["L12","L13","L15","L16"]),  // L14 (signal) extra-dim inside fetch block
-      G: new Set(["L5","L7"]),
+      D: new Set(["L1","L9","L10"]),
+      F: new Set(["L12","L13","L15","L16"]),
+      G: new Set(["L4","L5","L7"]),
       H: new Set(["L4","L6"]),
       I: new Set(["L9","L10"]),
       J: new Set(["L14"]),
     };
 
-    const isBright = brightSets[phase].has(line);
-    const target = isBright ? FULL : DIM;
+    if (phase === "none") return FULL;
 
-    // Signal line extra-dim in phase F
-    if (phase === "F" && line === "L14") return DIM * 1;
+    const prevPhase = prevPhases[phase];
+
+    // Calculate what the target opacity was in the PREVIOUS phase
+    const prevIsBright = brightSets[prevPhase].has(line);
+    let prevTarget = prevIsBright ? FULL : DIM;
+    if (prevPhase === "F" && line === "L14") prevTarget = DIM * 1; // special case lookup
+
+    // Calculate what the target opacity is in the CURRENT phase
+    const isBright = brightSets[phase].has(line);
+    let currentTarget = isBright ? FULL : DIM;
+    if (phase === "F" && line === "L14") currentTarget = DIM * 1; // special case lookup
 
     const phaseStart: Record<Phase, number> = {
-      none: 0, D: 85, F: 155, G: 225, H: 295, I: 360, J: 420,
+      none: 0, D: 75, F: 135, G: 200, H: 275, I: 340, J: 400,
     };
+
     const ps = phaseStart[phase];
-    if (phase === "none") return FULL;
-    // 6-frame ramp into the phase, then hold at target
+    // 6-frame ramp interpolates between the previous phase's target and the new phase's target
     const ramp = clamp01((frame - ps) / 6);
-    return lerp(FULL, target, easeOut(ramp));
+    return lerp(prevTarget, currentTarget, easeOut(ramp));
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -347,7 +359,7 @@ export const Scene4: React.FC = () => {
             letterSpacing: -1,
             lineHeight: 1,
           }}>
-            AbortController
+            AbortController({"\u00A0"})
           </span>
         </div>
       </div>
@@ -374,7 +386,7 @@ export const Scene4: React.FC = () => {
         }}>
           
         </div>
-        <GamepadSVG size={260} />
+        <GamepadSVG size={350} />
       </div>
 
       {/* ── CODE WINDOW ── */}
@@ -399,6 +411,9 @@ export const Scene4: React.FC = () => {
               {tok(C.punctuation, ";")}
             </Line>
 
+            {/* L3  blank */}
+            <Line op={lineOp("L3")}>{" "}</Line>
+
             {/* L2  function handleSearch(query) { */}
             <Line op={lineOp("L2")}>
               {tok(C.keyword, "function ")}
@@ -407,9 +422,6 @@ export const Scene4: React.FC = () => {
               {tok(C.codeText, "query")}
               {tok(C.punctuation, ") {")}
             </Line>
-
-            {/* L3  blank */}
-            <Line op={lineOp("L3")}>{" "}</Line>
 
             {/* L4  // Cancel previous request */}
             <Line op={lineOp("L4")}>
@@ -493,7 +505,7 @@ export const Scene4: React.FC = () => {
               {tok(C.fnName, "then")}
               {tok(C.punctuation, "(")}
               {tok(C.codeText, "res")}
-              {tok(C.punctuation, " => ")}
+              {tok(C.keyword, " => ")}
               {tok(C.codeText, "res")}
               {tok(C.punctuation, ".")}
               {tok(C.fnName, "json")}
@@ -504,7 +516,8 @@ export const Scene4: React.FC = () => {
               {tok(C.fnName, "then")}
               {tok(C.punctuation, "(")}
               {tok(C.codeText, "data")}
-              {tok(C.punctuation, " => {")}
+              {tok(C.keyword, " => ")}
+              {tok(C.punctuation, "{")}
             </Line>
             <Line op={lineOp("L16")}>
               {sp(6)}{tok(C.fnName, "updateUI")}
@@ -520,8 +533,10 @@ export const Scene4: React.FC = () => {
             <Line op={lineOp("L16")}>
               {sp(4)}{tok(C.punctuation, ".")}
               {tok(C.fnName, "catch")}
-              {tok(C.punctuation, "(() => {});")}
-              {sp(2)}{tok(C.comment, "// silences the error")}
+              {tok(C.punctuation, "(() ")}
+              {tok(C.keyword, "=>")}
+              {tok(C.punctuation, " {});")}
+              {sp(2)}{tok(C.comment, "// catch errors")}
             </Line>
 
 

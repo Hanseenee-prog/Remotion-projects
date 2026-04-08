@@ -7,10 +7,6 @@ import { Scene3 } from "./Scene3";
 import { Scene4 } from "./Scene4";
 import { Scene5 } from "./Scene5";
 import { Scene6 } from "./Scene6";
-import { Scene7 } from "./Scene7";
-import { Scene8 } from "./Scene8";
-import { Scene9 } from "./Scene9";
-import { Scene10 } from "./Scene10";
 export { TOTAL_FRAMES };
 
 export const ReelBackground: React.FC = () => (
@@ -42,10 +38,6 @@ export const Reel: React.FC = () => (
       <Series.Sequence durationInFrames={DURATIONS.s4}><Scene4 /></Series.Sequence>
       <Series.Sequence durationInFrames={DURATIONS.s5}><Scene5 /></Series.Sequence>
       <Series.Sequence durationInFrames={DURATIONS.s6}><Scene6 /></Series.Sequence>
-      <Series.Sequence durationInFrames={DURATIONS.s7}><Scene7 /></Series.Sequence>
-      <Series.Sequence durationInFrames={DURATIONS.s8}><Scene8 /></Series.Sequence>
-      <Series.Sequence durationInFrames={DURATIONS.s9}><Scene9 /></Series.Sequence>
-      <Series.Sequence durationInFrames={DURATIONS.s10}><Scene10 /></Series.Sequence>
     </Series>
   </AbsoluteFill>
 );
