@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Among Us Crewmate - Fixed</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #1a1a24;
+    }
+    .impostor-container {
+      width: 100%;
+      max-width: 500px;
+      padding: 20px;
+      transform: scaleY(0.7) scaleX(0.8);
+    }
+    svg {
+      width: 100%;
+      height: auto;
+      filter: drop-shadow(0 15px 25px rgba(0,0,0,0.5));
+    }
+  </style>
+</head>
+<body>
+
+  <div class="impostor-container">
+    <svg viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+      
+      <defs>
+        <clipPath id="body-clip">
+          <path d="M 180 180 
+                   C 180 60, 420 60, 420 180 
+                   L 420 480 
+                   C 420 520, 350 520, 350 480 
+                   L 350 450 
+                   L 250 450 
+                   L 250 480 
+                   C 250 520, 180 520, 180 480 
+                   Z" />
+        </clipPath>
+      </defs>
+
+      <path d="M 185 150 C 120 150, 120 420, 185 420" 
+            fill="#9F0B18" stroke="#000000" stroke-width="15" stroke-linejoin="round" />
+
+      <g clip-path="url(#body-clip)">
+        <rect x="0" y="0" width="600" height="600" fill="#E81224" />
+        <path d="M 340 0 L 600 0 L 600 600 L 340 600 Z" fill="#9F0B18" />
+      </g>
+
+      <path d="M 180 180 
+               C 180 60, 420 60, 420 180 
+               L 420 480 
+               C 420 520, 350 520, 350 480 
+               L 350 450 
+               L 250 450 
+               L 250 480 
+               C 250 520, 180 520, 180 480 
+               Z" 
+            fill="none" stroke="#000000" stroke-width="15" stroke-linejoin="round" />
+
+      <g>
+        <ellipse cx="300" cy="180" rx="90" ry="55" fill="#446D89" stroke="#000000" stroke-width="15" />
+        <ellipse cx="290" cy="175" rx="75" ry="40" fill="#88C9E2" />
+        <ellipse cx="260" cy="160" rx="35" ry="15" fill="#FFFFFF" transform="rotate(-15 260 160)" />
+      </g>
+
+    </svg>
+  </div>
+
+</body>
+</html>

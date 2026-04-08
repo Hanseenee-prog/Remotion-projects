@@ -59,9 +59,9 @@ export const FONTS = {
 // ─── Scene durations (frames @ 30 fps) ────────────────────────────────────────
 export const DURATIONS = {
   s1:  Math.round(4.0 * 30),  // 120f — click search → request fires
-  s2:  Math.round(5.0 * 30),  // 150f — click again → two requests running
-  s3:  Math.round(5.0 * 30),  // 150f — first response overwrites → race condition
-  s4:  Math.round(4.0 * 30),  // 120f — flickering / outdated results
+  s2:  Math.round(10.2 * 30),  // 297f — click again → two requests running
+  s3:  Math.round(6.5 * 30),  // 150f — first response overwrites → race condition
+  s4:  Math.round(16.5 * 30),  // 495f — flickering / outdated results
   s5:  Math.round(5.0 * 30),  // 150f — introduce AbortController, create controller
   s6:  Math.round(6.0 * 30),  // 180f — check existing controller → abort previous
   s7:  Math.round(5.0 * 30),  // 150f — new controller + attach signal
